@@ -1,0 +1,1090 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#2f7d6e">
+<title>MediNote — お薬管理</title>
+<style>
+  :root{
+    --bg:#f3f6f5;
+    --card:#ffffff;
+    --ink:#1d2b29;
+    --ink-soft:#5c6b69;
+    --line:#e2eae8;
+    --brand:#2f7d6e;
+    --brand-dark:#256356;
+    --brand-soft:#e6f2ef;
+    --accent:#e8843c;
+    --danger:#d2544b;
+    --ok:#3a9b76;
+    --morning:#f4a93d;
+    --noon:#ec6a4c;
+    --evening:#6b6fc9;
+    --bed:#3f6b86;
+    --shadow:0 2px 14px rgba(31,60,55,.07);
+    --radius:16px;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;padding:0}
+  body{
+    font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Hiragino Kaku Gothic ProN","Noto Sans JP",Meiryo,sans-serif;
+    background:var(--bg);color:var(--ink);line-height:1.6;
+    -webkit-font-smoothing:antialiased;
+    padding-bottom:78px;
+  }
+  h1,h2,h3{margin:0 0 .4em;font-weight:700;letter-spacing:.01em}
+  button{font-family:inherit;cursor:pointer;border:none;background:none;color:inherit;font-size:1rem}
+  input,select,textarea{font-family:inherit;font-size:1rem}
+
+  /* Header */
+  header.app{
+    background:linear-gradient(135deg,var(--brand) 0%,var(--brand-dark) 100%);
+    color:#fff;padding:14px 18px;display:flex;align-items:center;justify-content:space-between;
+    position:sticky;top:0;z-index:30;
+  }
+  header.app .logo{display:flex;align-items:center;gap:9px;font-weight:800;font-size:1.18rem;letter-spacing:.02em}
+  header.app .logo .pill{background:#fff;color:var(--brand);width:30px;height:30px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:1.1rem}
+  header.app .acct{display:flex;align-items:center;gap:8px;font-size:.82rem}
+  header.app .acct img{width:30px;height:30px;border-radius:50%;border:2px solid rgba(255,255,255,.6)}
+  .ghost-btn{background:rgba(255,255,255,.16);color:#fff;border-radius:999px;padding:7px 13px;font-size:.82rem;font-weight:600}
+
+  main{max-width:760px;margin:0 auto;padding:16px 14px 30px}
+  .view{display:none;animation:fade .25s ease}
+  .view.active{display:block}
+  @keyframes fade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+
+  .card{background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);padding:18px;margin-bottom:14px;border:1px solid var(--line)}
+  .card h2{font-size:1.06rem}
+  .muted{color:var(--ink-soft);font-size:.86rem}
+  .section-title{display:flex;align-items:center;justify-content:space-between;margin:4px 2px 12px}
+  .section-title h1{font-size:1.32rem;margin:0}
+
+  /* Date strip */
+  .datebar{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:14px}
+  .datebar .d{font-size:1.05rem;font-weight:700}
+  .datebar button{background:var(--card);border:1px solid var(--line);border-radius:12px;width:42px;height:42px;font-size:1.2rem;box-shadow:var(--shadow);color:var(--brand)}
+
+  /* Progress ring */
+  .today-hero{display:flex;align-items:center;gap:16px}
+  .ring{position:relative;width:84px;height:84px;flex:0 0 auto}
+  .ring svg{transform:rotate(-90deg)}
+  .ring .num{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center}
+  .ring .num b{font-size:1.25rem;line-height:1}
+  .ring .num span{font-size:.66rem;color:var(--ink-soft)}
+
+  /* Slots */
+  .slot{border:1px solid var(--line);border-radius:14px;margin-bottom:12px;overflow:hidden}
+  .slot-head{display:flex;align-items:center;gap:10px;padding:12px 14px;background:#fafcfb}
+  .slot-head .icon{width:34px;height:34px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:1.15rem;color:#fff;flex:0 0 auto}
+  .slot-head .ttl{font-weight:700;flex:1}
+  .slot-head .cnt{font-size:.8rem;color:var(--ink-soft)}
+  .slot.morning .icon{background:var(--morning)}
+  .slot.noon .icon{background:var(--noon)}
+  .slot.evening .icon{background:var(--evening)}
+  .slot.bed .icon{background:var(--bed)}
+  .slot-body{padding:6px 14px 12px}
+  .med-row{display:flex;align-items:center;gap:12px;padding:10px 4px;border-top:1px dashed var(--line)}
+  .med-row:first-child{border-top:none}
+  .med-row .info{flex:1;min-width:0}
+  .med-row .info .nm{font-weight:600}
+  .med-row .info .sub{font-size:.78rem;color:var(--ink-soft)}
+  .chk{width:30px;height:30px;border-radius:9px;border:2px solid var(--line);display:flex;align-items:center;justify-content:center;flex:0 0 auto;transition:.15s;background:#fff;color:transparent;font-size:1.05rem;font-weight:800}
+  .chk.on{background:var(--ok);border-color:var(--ok);color:#fff}
+  .med-row.done .nm{text-decoration:line-through;color:var(--ink-soft)}
+  .slot-foot{padding:0 14px 12px}
+  .btn-all{width:100%;background:var(--brand-soft);color:var(--brand-dark);font-weight:700;border-radius:11px;padding:11px;border:1px solid #cfe6df}
+  .btn-all.done{background:#eef2f1;color:var(--ink-soft);border-color:var(--line)}
+
+  /* Buttons */
+  .btn{display:inline-flex;align-items:center;justify-content:center;gap:7px;background:var(--brand);color:#fff;font-weight:700;border-radius:12px;padding:12px 16px;width:100%}
+  .btn.sec{background:#fff;color:var(--brand);border:1.5px solid var(--brand)}
+  .btn.warn{background:var(--danger)}
+  .btn.sm{padding:8px 12px;width:auto;font-size:.85rem;border-radius:10px}
+  .btn:disabled{opacity:.5;cursor:default}
+
+  /* Forms */
+  .field{margin-bottom:13px}
+  .field label{display:block;font-size:.82rem;font-weight:600;color:var(--ink-soft);margin-bottom:5px}
+  .field input,.field select,.field textarea{width:100%;padding:11px 12px;border:1.5px solid var(--line);border-radius:11px;background:#fff;outline:none}
+  .field input:focus,.field select:focus,.field textarea:focus{border-color:var(--brand)}
+  .chips{display:flex;flex-wrap:wrap;gap:8px}
+  .chip{padding:8px 13px;border-radius:999px;border:1.5px solid var(--line);background:#fff;font-size:.86rem;font-weight:600;color:var(--ink-soft)}
+  .chip.on{background:var(--brand);border-color:var(--brand);color:#fff}
+  .row2{display:flex;gap:10px}
+  .row2>*{flex:1}
+
+  /* Med list (settings) */
+  .med-card{display:flex;gap:12px;align-items:flex-start;padding:14px;border:1px solid var(--line);border-radius:14px;margin-bottom:11px;background:#fff}
+  .med-card .badge{width:42px;height:42px;border-radius:11px;background:var(--brand-soft);color:var(--brand-dark);display:flex;align-items:center;justify-content:center;font-size:1.25rem;flex:0 0 auto}
+  .med-card .body{flex:1;min-width:0}
+  .med-card .body .nm{font-weight:700}
+  .med-card .body .meta{font-size:.8rem;color:var(--ink-soft);margin-top:2px}
+  .tagrow{display:flex;flex-wrap:wrap;gap:5px;margin-top:7px}
+  .tag{font-size:.72rem;padding:3px 9px;border-radius:999px;background:#eef4f2;color:var(--brand-dark);font-weight:600}
+  .icon-btn{background:#f4f7f6;border-radius:9px;width:34px;height:34px;display:flex;align-items:center;justify-content:center;color:var(--ink-soft);flex:0 0 auto}
+
+  .empty{text-align:center;padding:30px 16px;color:var(--ink-soft)}
+  .empty .big{font-size:2.4rem;margin-bottom:6px}
+
+  /* Bottom nav */
+  nav.tabbar{position:fixed;bottom:0;left:0;right:0;background:#fff;border-top:1px solid var(--line);display:flex;z-index:40;padding:6px 4px env(safe-area-inset-bottom);box-shadow:0 -2px 14px rgba(31,60,55,.06)}
+  nav.tabbar button{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;padding:7px 0;color:var(--ink-soft);font-size:.66rem;font-weight:600}
+  nav.tabbar button .ic{font-size:1.32rem;line-height:1}
+  nav.tabbar button.on{color:var(--brand)}
+
+  /* Modal */
+  .modal{position:fixed;inset:0;background:rgba(20,35,32,.5);display:none;align-items:flex-end;justify-content:center;z-index:60;padding:0}
+  .modal.open{display:flex}
+  .sheet{background:#fff;width:100%;max-width:760px;border-radius:22px 22px 0 0;max-height:92vh;overflow-y:auto;padding:18px 18px 28px;animation:up .25s ease}
+  @keyframes up{from{transform:translateY(30px);opacity:.6}to{transform:none;opacity:1}}
+  .sheet .grab{width:42px;height:5px;border-radius:99px;background:var(--line);margin:0 auto 14px}
+  .sheet h2{font-size:1.16rem}
+
+  /* AI scan */
+  .drop{border:2px dashed #c5ddd6;border-radius:16px;background:var(--brand-soft);padding:26px 16px;text-align:center;color:var(--brand-dark)}
+  .drop .big{font-size:2.2rem}
+  .preview{position:relative;border-radius:14px;overflow:hidden;margin-top:12px}
+  .preview img{width:100%;display:block;max-height:280px;object-fit:cover}
+  .spinner{display:inline-block;width:18px;height:18px;border:3px solid rgba(255,255,255,.4);border-top-color:#fff;border-radius:50%;animation:spin .8s linear infinite;vertical-align:-3px}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  .ai-result{border:1px solid var(--line);border-radius:13px;padding:12px;margin-top:10px;background:#fafcfb}
+
+  /* hospital */
+  table.sum{width:100%;border-collapse:collapse;font-size:.85rem}
+  table.sum th,table.sum td{text-align:left;padding:9px 8px;border-bottom:1px solid var(--line)}
+  table.sum th{color:var(--ink-soft);font-weight:600;font-size:.76rem}
+  .adh-bar{height:8px;border-radius:99px;background:#eef2f1;overflow:hidden}
+  .adh-bar>i{display:block;height:100%;background:var(--ok);border-radius:99px}
+  .stat-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:6px}
+  .stat{background:#fafcfb;border:1px solid var(--line);border-radius:12px;padding:12px;text-align:center}
+  .stat b{font-size:1.5rem;display:block;color:var(--brand-dark)}
+  .stat span{font-size:.74rem;color:var(--ink-soft)}
+
+  .toast{position:fixed;bottom:90px;left:50%;transform:translateX(-50%);background:var(--ink);color:#fff;padding:11px 18px;border-radius:999px;font-size:.85rem;font-weight:600;z-index:100;opacity:0;transition:.3s;pointer-events:none;box-shadow:0 4px 16px rgba(0,0,0,.2)}
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(-4px)}
+
+  .banner{background:#fff7ed;border:1px solid #f3d9b8;color:#8a5a22;border-radius:12px;padding:11px 13px;font-size:.82rem;margin-bottom:13px;display:flex;gap:8px}
+  .signin-wrap{text-align:center;padding:14px 0}
+  .help{font-size:.78rem;color:var(--ink-soft);margin-top:4px}
+  a{color:var(--brand)}
+  .switch{display:flex;align-items:center;justify-content:space-between;padding:11px 0;border-bottom:1px solid var(--line)}
+  .switch:last-child{border-bottom:none}
+  .toggle{width:46px;height:27px;border-radius:99px;background:var(--line);position:relative;transition:.2s;flex:0 0 auto}
+  .toggle.on{background:var(--brand)}
+  .toggle i{position:absolute;top:3px;left:3px;width:21px;height:21px;border-radius:50%;background:#fff;transition:.2s;box-shadow:0 1px 3px rgba(0,0,0,.2)}
+  .toggle.on i{left:22px}
+</style>
+</head>
+<body>
+
+<header class="app">
+  <div class="logo"><span class="pill">💊</span> MediNote</div>
+  <div class="acct" id="acctBox">
+    <button class="ghost-btn" id="headerSignBtn">ログイン</button>
+  </div>
+</header>
+
+<main>
+  <!-- ========== ホーム：今日の服薬 ========== -->
+  <section class="view active" id="view-today">
+    <div class="datebar">
+      <button id="prevDay">‹</button>
+      <div class="d" id="dateLabel">—</div>
+      <button id="nextDay">›</button>
+    </div>
+
+    <div class="card">
+      <div class="today-hero">
+        <div class="ring">
+          <svg width="84" height="84">
+            <circle cx="42" cy="42" r="36" stroke="#eef2f1" stroke-width="9" fill="none"/>
+            <circle id="ringFg" cx="42" cy="42" r="36" stroke="var(--brand)" stroke-width="9" fill="none"
+              stroke-linecap="round" stroke-dasharray="226" stroke-dashoffset="226"/>
+          </svg>
+          <div class="num"><b id="ringPct">0%</b><span>達成</span></div>
+        </div>
+        <div style="flex:1">
+          <h2 style="margin-bottom:2px">今日のお薬</h2>
+          <div class="muted" id="todaySummary">服用予定を確認しましょう</div>
+        </div>
+      </div>
+    </div>
+
+    <div id="slots"></div>
+  </section>
+
+  <!-- ========== 薬の設定 ========== -->
+  <section class="view" id="view-meds">
+    <div class="section-title">
+      <h1>お薬の管理</h1>
+      <button class="btn sm" id="addMedBtn">＋ 追加</button>
+    </div>
+    <button class="btn sec" id="scanBtn" style="margin-bottom:14px">📷 写真からAIで読み取る</button>
+    <div id="medList"></div>
+  </section>
+
+  <!-- ========== リマインダー ========== -->
+  <section class="view" id="view-remind">
+    <div class="section-title">
+      <h1>リマインダー</h1>
+      <button class="btn sm" id="addRemindBtn">＋ 追加</button>
+    </div>
+    <div class="card">
+      <div class="switch">
+        <div>
+          <div style="font-weight:600">ブラウザ通知</div>
+          <div class="muted">時刻になると端末に通知します</div>
+        </div>
+        <div class="toggle" id="notifToggle"><i></i></div>
+      </div>
+      <div class="switch">
+        <div>
+          <div style="font-weight:600">再通知（スヌーズ）</div>
+          <div class="muted">未服用なら<span id="snoozeMinLbl">10</span>分後に再通知</div>
+        </div>
+        <div class="toggle" id="snoozeToggle"><i></i></div>
+      </div>
+    </div>
+    <div id="remindList"></div>
+    <div class="banner" style="margin-top:6px">
+      <span>ℹ️</span>
+      <div>ブラウザ通知はこのページを開いている間に動作します。LINE通知を使う場合は「アカウント」画面でWebhook URLを設定してください（中継サーバーが必要です）。</div>
+    </div>
+  </section>
+
+  <!-- ========== 病院用まとめ ========== -->
+  <section class="view" id="view-hospital">
+    <div class="section-title"><h1>病院用まとめ</h1></div>
+    <div class="card">
+      <h2>服薬状況（過去<span id="rangeDays">14</span>日間）</h2>
+      <div class="stat-grid">
+        <div class="stat"><b id="statRate">—</b><span>平均服薬率</span></div>
+        <div class="stat"><b id="statMeds">—</b><span>登録中のお薬</span></div>
+      </div>
+    </div>
+    <div class="card">
+      <h2>お薬一覧</h2>
+      <div id="hospMeds"></div>
+    </div>
+    <div class="card">
+      <h2>服薬率（お薬別）</h2>
+      <table class="sum"><thead><tr><th>お薬</th><th style="width:120px">服薬率</th></tr></thead>
+        <tbody id="hospTable"></tbody></table>
+    </div>
+    <button class="btn sec" id="printBtn">🖨 この内容を印刷 / PDF保存</button>
+  </section>
+
+  <!-- ========== アカウント・設定 ========== -->
+  <section class="view" id="view-account">
+    <div class="section-title"><h1>アカウント・設定</h1></div>
+
+    <div class="card">
+      <h2>Googleアカウント</h2>
+      <div id="acctDetail" class="muted">未ログインです。データはこの端末にのみ保存されます。</div>
+      <div class="signin-wrap" id="signinArea">
+        <button class="btn" id="googleSignBtn">Googleでログイン</button>
+        <div class="help">ログインすると、ご自身のGoogleドライブにデータが保存され、別の端末でも同期できます。</div>
+      </div>
+      <div id="syncArea" style="display:none">
+        <button class="btn sec sm" id="syncNowBtn" style="width:100%;margin-bottom:8px">☁️ 今すぐ同期</button>
+        <button class="btn warn sm" id="signOutBtn" style="width:100%">ログアウト</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Google クライアントID</h2>
+      <div class="field">
+        <label>OAuth クライアントID</label>
+        <input id="cfgGoogleId" placeholder="xxxxx.apps.googleusercontent.com">
+        <div class="help">Google Cloud Console で取得したクライアントID。承認済みのJavaScript生成元にこのページのURLを登録してください。</div>
+      </div>
+      <button class="btn sec sm" id="saveGoogleId">保存</button>
+    </div>
+
+    <div class="card">
+      <h2>Claude API（写真読み取り用）</h2>
+      <div class="field">
+        <label>Anthropic APIキー</label>
+        <input id="cfgClaudeKey" type="password" placeholder="sk-ant-...">
+        <div class="help">写真からお薬情報を読み取る際に使用します。キーはこの端末にのみ保存されます。</div>
+      </div>
+      <button class="btn sec sm" id="saveClaudeKey">保存</button>
+    </div>
+
+    <div class="card">
+      <h2>LINE通知（任意）</h2>
+      <div class="field">
+        <label>通知中継 Webhook URL</label>
+        <input id="cfgLineHook" placeholder="https://...">
+        <div class="help">LINE Messaging API へ中継するサーバーのURL。設定するとリマインダー時にPOSTします。</div>
+      </div>
+      <button class="btn sec sm" id="saveLineHook">保存</button>
+    </div>
+
+    <div class="card">
+      <h2>データ</h2>
+      <button class="btn sec sm" id="exportBtn" style="width:100%;margin-bottom:8px">⬇️ データを書き出し（JSON）</button>
+      <button class="btn warn sm" id="resetBtn" style="width:100%">すべてのデータを削除</button>
+    </div>
+    <div class="muted" style="text-align:center;font-size:.74rem;margin-top:8px">MediNote · 単一ファイル版</div>
+  </section>
+</main>
+
+<nav class="tabbar">
+  <button data-tab="today" class="on"><span class="ic">📅</span>今日</button>
+  <button data-tab="meds"><span class="ic">💊</span>お薬</button>
+  <button data-tab="remind"><span class="ic">⏰</span>通知</button>
+  <button data-tab="hospital"><span class="ic">🏥</span>病院用</button>
+  <button data-tab="account"><span class="ic">⚙️</span>設定</button>
+</nav>
+
+<!-- ===== お薬 追加/編集モーダル ===== -->
+<div class="modal" id="medModal">
+  <div class="sheet">
+    <div class="grab"></div>
+    <h2 id="medModalTitle">お薬を追加</h2>
+    <div class="field">
+      <label>お薬の名前</label>
+      <input id="mName" placeholder="例）アムロジピン錠 5mg">
+    </div>
+    <div class="row2">
+      <div class="field">
+        <label>服用量</label>
+        <input id="mDose" placeholder="例）1錠">
+      </div>
+      <div class="field">
+        <label>食事との関係</label>
+        <select id="mMeal">
+          <option value="none">指定なし</option>
+          <option value="before">食前</option>
+          <option value="after">食後</option>
+          <option value="between">食間</option>
+        </select>
+      </div>
+    </div>
+    <div class="field">
+      <label>服用タイミング</label>
+      <div class="chips" id="mTimings">
+        <div class="chip" data-t="morning">朝</div>
+        <div class="chip" data-t="noon">昼</div>
+        <div class="chip" data-t="evening">夜</div>
+        <div class="chip" data-t="bed">寝る前</div>
+      </div>
+    </div>
+    <div class="field">
+      <label>メモ（任意）</label>
+      <textarea id="mNote" rows="2" placeholder="例）血圧の薬。飲み忘れ注意"></textarea>
+    </div>
+    <button class="btn" id="saveMedBtn">保存する</button>
+    <button class="btn sec sm" id="deleteMedBtn" style="width:100%;margin-top:8px;display:none">このお薬を削除</button>
+    <button class="btn sec sm" id="closeMedBtn" style="width:100%;margin-top:8px;border:none;color:var(--ink-soft)">閉じる</button>
+  </div>
+</div>
+
+<!-- ===== リマインダー モーダル ===== -->
+<div class="modal" id="remindModal">
+  <div class="sheet">
+    <div class="grab"></div>
+    <h2 id="remindModalTitle">リマインダーを追加</h2>
+    <div class="row2">
+      <div class="field"><label>時刻</label><input id="rTime" type="time" value="08:00"></div>
+      <div class="field"><label>タイミング</label>
+        <select id="rSlot">
+          <option value="morning">朝</option>
+          <option value="noon">昼</option>
+          <option value="evening">夜</option>
+          <option value="bed">寝る前</option>
+        </select>
+      </div>
+    </div>
+    <div class="field">
+      <label>通知方法</label>
+      <div class="chips" id="rMethods">
+        <div class="chip on" data-m="browser">ブラウザ通知</div>
+        <div class="chip" data-m="line">LINE</div>
+      </div>
+    </div>
+    <button class="btn" id="saveRemindBtn">保存する</button>
+    <button class="btn sec sm" id="deleteRemindBtn" style="width:100%;margin-top:8px;display:none">削除</button>
+    <button class="btn sec sm" id="closeRemindBtn" style="width:100%;margin-top:8px;border:none;color:var(--ink-soft)">閉じる</button>
+  </div>
+</div>
+
+<!-- ===== AIスキャン モーダル ===== -->
+<div class="modal" id="scanModal">
+  <div class="sheet">
+    <div class="grab"></div>
+    <h2>📷 写真からお薬を読み取り</h2>
+    <p class="muted">お薬手帳・処方箋・薬の袋などの写真を撮影またはアップロードしてください。AIが内容を読み取ります。</p>
+    <label class="drop" id="dropArea" for="scanFile" style="display:block">
+      <div class="big">🖼️</div>
+      <div style="font-weight:700">写真を選択 / 撮影</div>
+      <div class="muted">タップして画像を選んでください</div>
+    </label>
+    <input id="scanFile" type="file" accept="image/*" capture="environment" style="display:none">
+    <div id="scanPreview"></div>
+    <button class="btn" id="runScanBtn" style="margin-top:12px;display:none">🔍 AIで読み取る</button>
+    <div id="scanResult"></div>
+    <button class="btn sec sm" id="closeScanBtn" style="width:100%;margin-top:10px;border:none;color:var(--ink-soft)">閉じる</button>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* ============================================================
+   MediNote — 単一ファイル版アプリ
+   データはローカル(localStorage)に保存し、ログイン時はGoogleドライブの
+   スプレッドシートへ同期します。
+   ============================================================ */
+
+const SLOTS = [
+  {key:'morning', label:'朝',     cls:'morning', icon:'🌅'},
+  {key:'noon',    label:'昼',     cls:'noon',    icon:'☀️'},
+  {key:'evening', label:'夜',     cls:'evening', icon:'🌆'},
+  {key:'bed',     label:'寝る前', cls:'bed',     icon:'🌙'},
+];
+const MEAL_LABEL = {none:'', before:'食前', after:'食後', between:'食間'};
+
+const LS_KEY = 'medinote_v1';
+const CFG_KEY = 'medinote_cfg_v1';
+
+let state = {
+  meds: [],          // {id,name,dose,meal,timings:[],note}
+  logs: {},          // {'YYYY-MM-DD': {morning:[medId..], ...}}
+  reminders: [],     // {id,time,slot,methods:[]}
+  settings: {notif:false, snooze:true, snoozeMin:10}
+};
+let cfg = { googleId:'', claudeKey:'', lineHook:'' };
+
+let viewDate = new Date();       // 表示中の日付
+let editingMedId = null;
+let editingRemindId = null;
+let scanImage = null;            // {dataUrl, mediaType, b64}
+let user = null;                 // {name,email,picture}
+let accessToken = null;
+let sheetId = null;
+let tokenClient = null;
+let saveTimer = null;
+
+/* ---------- ユーティリティ ---------- */
+const $ = s => document.querySelector(s);
+const $$ = s => document.querySelectorAll(s);
+const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2,6);
+function fmtDate(d){ return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+function isSameDay(a,b){ return fmtDate(a)===fmtDate(b); }
+function toast(msg){ const t=$('#toast'); t.textContent=msg; t.classList.add('show'); clearTimeout(t._t); t._t=setTimeout(()=>t.classList.remove('show'),2200); }
+
+/* ---------- 保存・読み込み ---------- */
+function loadLocal(){
+  try{ const s=JSON.parse(localStorage.getItem(LS_KEY)); if(s){ state = Object.assign(state, s); state.settings = Object.assign({notif:false,snooze:true,snoozeMin:10}, s.settings||{}); } }catch(e){}
+  try{ const c=JSON.parse(localStorage.getItem(CFG_KEY)); if(c) cfg = Object.assign(cfg, c); }catch(e){}
+}
+function saveLocal(){
+  localStorage.setItem(LS_KEY, JSON.stringify(state));
+  scheduleCloudSave();
+}
+function saveCfg(){ localStorage.setItem(CFG_KEY, JSON.stringify(cfg)); }
+
+function scheduleCloudSave(){
+  if(!accessToken || !sheetId) return;
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(()=>cloudSave(), 1500);
+}
+
+/* ============================================================
+   画面切り替え
+   ============================================================ */
+function switchTab(tab){
+  $$('.view').forEach(v=>v.classList.remove('active'));
+  $('#view-'+tab).classList.add('active');
+  $$('.tabbar button').forEach(b=>b.classList.toggle('on', b.dataset.tab===tab));
+  window.scrollTo(0,0);
+  if(tab==='hospital') renderHospital();
+  if(tab==='meds') renderMedList();
+  if(tab==='remind') renderReminders();
+}
+$$('.tabbar button').forEach(b=> b.onclick = ()=>switchTab(b.dataset.tab));
+
+/* ============================================================
+   今日の服薬画面
+   ============================================================ */
+function getLog(dateStr){
+  if(!state.logs[dateStr]) state.logs[dateStr] = {morning:[],noon:[],evening:[],bed:[]};
+  // 旧データ補完
+  SLOTS.forEach(s=>{ if(!state.logs[dateStr][s.key]) state.logs[dateStr][s.key]=[]; });
+  return state.logs[dateStr];
+}
+function medsForSlot(slotKey){ return state.meds.filter(m=>m.timings.includes(slotKey)); }
+
+function renderToday(){
+  const ds = fmtDate(viewDate);
+  const today = new Date();
+  let label;
+  if(isSameDay(viewDate,today)) label='今日';
+  else{ const y=new Date(today); y.setDate(y.getDate()-1); const tm=new Date(today); tm.setDate(tm.getDate()+1);
+    if(isSameDay(viewDate,y)) label='昨日'; else if(isSameDay(viewDate,tm)) label='明日'; else label=''; }
+  const w=['日','月','火','水','木','金','土'][viewDate.getDay()];
+  $('#dateLabel').textContent = `${viewDate.getMonth()+1}月${viewDate.getDate()}日(${w}) ${label}`;
+
+  const log = getLog(ds);
+  const wrap = $('#slots'); wrap.innerHTML='';
+  let total=0, done=0;
+
+  SLOTS.forEach(s=>{
+    const meds = medsForSlot(s.key);
+    if(meds.length===0) return;
+    total += meds.length;
+    const doneCount = meds.filter(m=>log[s.key].includes(m.id)).length;
+    done += doneCount;
+    const allDone = doneCount===meds.length;
+
+    const el = document.createElement('div');
+    el.className = 'slot '+s.cls;
+    el.innerHTML = `
+      <div class="slot-head">
+        <div class="icon">${s.icon}</div>
+        <div class="ttl">${s.label}</div>
+        <div class="cnt">${doneCount}/${meds.length} 完了</div>
+      </div>
+      <div class="slot-body">
+        ${meds.map(m=>{
+          const isDone = log[s.key].includes(m.id);
+          const sub = [MEAL_LABEL[m.meal], m.dose].filter(Boolean).join(' ・ ');
+          return `<div class="med-row ${isDone?'done':''}" data-mid="${m.id}" data-slot="${s.key}">
+            <div class="info"><div class="nm">${esc(m.name)}</div>${sub?`<div class="sub">${esc(sub)}</div>`:''}</div>
+            <div class="chk ${isDone?'on':''}">✓</div>
+          </div>`;
+        }).join('')}
+      </div>
+      <div class="slot-foot">
+        <button class="btn-all ${allDone?'done':''}" data-allslot="${s.key}">${allDone?'✓ すべて完了済み':'まとめて完了にする'}</button>
+      </div>`;
+    wrap.appendChild(el);
+  });
+
+  if(total===0){
+    wrap.innerHTML = `<div class="card empty"><div class="big">💊</div><div>この日に予定されたお薬はありません</div>
+      <div style="margin-top:12px"><button class="btn sec sm" onclick="switchTab('meds')">お薬を登録する</button></div></div>`;
+  }
+
+  // リング
+  const pct = total? Math.round(done/total*100):0;
+  $('#ringPct').textContent = pct+'%';
+  const circ=226; $('#ringFg').style.strokeDashoffset = circ - circ*pct/100;
+  $('#todaySummary').textContent = total? `${total}件中 ${done}件 服用済み` : 'お薬が登録されていません';
+
+  // 行クリック
+  wrap.querySelectorAll('.med-row').forEach(r=>{
+    r.onclick = ()=> toggleDose(ds, r.dataset.slot, r.dataset.mid);
+  });
+  wrap.querySelectorAll('[data-allslot]').forEach(b=>{
+    b.onclick = ()=> completeSlot(ds, b.dataset.allslot);
+  });
+}
+function toggleDose(ds, slot, mid){
+  const log = getLog(ds);
+  const arr = log[slot];
+  const i = arr.indexOf(mid);
+  if(i>=0) arr.splice(i,1); else arr.push(mid);
+  saveLocal(); renderToday();
+}
+function completeSlot(ds, slot){
+  const log = getLog(ds);
+  const meds = medsForSlot(slot).map(m=>m.id);
+  const allDone = meds.every(id=>log[slot].includes(id));
+  log[slot] = allDone? [] : meds.slice();
+  saveLocal(); renderToday();
+  toast(allDone? 'チェックを外しました' : `${SLOTS.find(s=>s.key===slot).label}を完了にしました`);
+}
+$('#prevDay').onclick = ()=>{ viewDate.setDate(viewDate.getDate()-1); renderToday(); };
+$('#nextDay').onclick = ()=>{ viewDate.setDate(viewDate.getDate()+1); renderToday(); };
+
+/* ============================================================
+   お薬の管理
+   ============================================================ */
+function renderMedList(){
+  const wrap = $('#medList'); wrap.innerHTML='';
+  if(state.meds.length===0){
+    wrap.innerHTML = `<div class="card empty"><div class="big">💊</div><div>まだお薬が登録されていません</div>
+      <div class="muted" style="margin-top:6px">「＋追加」または「写真から読み取る」で登録できます</div></div>`;
+    return;
+  }
+  state.meds.forEach(m=>{
+    const times = m.timings.map(t=>SLOTS.find(s=>s.key===t)?.label).filter(Boolean);
+    const card = document.createElement('div');
+    card.className='med-card';
+    card.innerHTML = `
+      <div class="badge">💊</div>
+      <div class="body">
+        <div class="nm">${esc(m.name)}</div>
+        <div class="meta">${[MEAL_LABEL[m.meal], m.dose].filter(Boolean).join(' ・ ')||'　'}</div>
+        <div class="tagrow">${times.map(t=>`<span class="tag">${t}</span>`).join('')}</div>
+        ${m.note?`<div class="meta" style="margin-top:5px">📝 ${esc(m.note)}</div>`:''}
+      </div>
+      <button class="icon-btn" data-edit="${m.id}">✏️</button>`;
+    wrap.appendChild(card);
+  });
+  wrap.querySelectorAll('[data-edit]').forEach(b=> b.onclick=()=>openMedModal(b.dataset.edit));
+}
+
+/* お薬モーダル */
+function openMedModal(id, prefill){
+  editingMedId = id||null;
+  const m = id? state.meds.find(x=>x.id===id) : (prefill||{name:'',dose:'',meal:'none',timings:[],note:''});
+  $('#medModalTitle').textContent = id? 'お薬を編集' : 'お薬を追加';
+  $('#mName').value = m.name||'';
+  $('#mDose').value = m.dose||'';
+  $('#mMeal').value = m.meal||'none';
+  $('#mNote').value = m.note||'';
+  $$('#mTimings .chip').forEach(c=> c.classList.toggle('on', (m.timings||[]).includes(c.dataset.t)));
+  $('#deleteMedBtn').style.display = id? 'block':'none';
+  openModal('medModal');
+}
+$('#addMedBtn').onclick = ()=>openMedModal(null);
+$$('#mTimings .chip').forEach(c=> c.onclick=()=>c.classList.toggle('on'));
+$('#saveMedBtn').onclick = ()=>{
+  const name = $('#mName').value.trim();
+  if(!name){ toast('お薬の名前を入力してください'); return; }
+  const timings = [...$$('#mTimings .chip.on')].map(c=>c.dataset.t);
+  if(timings.length===0){ toast('服用タイミングを選んでください'); return; }
+  const data = { name, dose:$('#mDose').value.trim(), meal:$('#mMeal').value, timings, note:$('#mNote').value.trim() };
+  if(editingMedId){ const m=state.meds.find(x=>x.id===editingMedId); Object.assign(m,data); }
+  else{ data.id=uid(); state.meds.push(data); }
+  saveLocal(); renderMedList(); renderToday(); closeModal('medModal');
+  toast('保存しました');
+};
+$('#deleteMedBtn').onclick = ()=>{
+  if(!editingMedId) return;
+  if(!confirm('このお薬を削除しますか？')) return;
+  state.meds = state.meds.filter(m=>m.id!==editingMedId);
+  saveLocal(); renderMedList(); renderToday(); closeModal('medModal');
+  toast('削除しました');
+};
+$('#closeMedBtn').onclick = ()=>closeModal('medModal');
+
+/* ============================================================
+   リマインダー
+   ============================================================ */
+function renderReminders(){
+  $('#notifToggle').classList.toggle('on', state.settings.notif);
+  $('#snoozeToggle').classList.toggle('on', state.settings.snooze);
+  $('#snoozeMinLbl').textContent = state.settings.snoozeMin;
+
+  const wrap = $('#remindList'); wrap.innerHTML='';
+  if(state.reminders.length===0){
+    wrap.innerHTML = `<div class="card empty"><div class="big">⏰</div><div>リマインダーがありません</div></div>`;
+    return;
+  }
+  state.reminders.sort((a,b)=>a.time.localeCompare(b.time)).forEach(r=>{
+    const slot = SLOTS.find(s=>s.key===r.slot);
+    const methods = r.methods.map(m=> m==='browser'?'通知':'LINE').join(' / ');
+    const card = document.createElement('div');
+    card.className='med-card';
+    card.innerHTML = `
+      <div class="badge">${slot?slot.icon:'⏰'}</div>
+      <div class="body">
+        <div class="nm" style="font-size:1.3rem">${r.time}</div>
+        <div class="meta">${slot?slot.label:''} ・ ${methods}</div>
+      </div>
+      <button class="icon-btn" data-redit="${r.id}">✏️</button>`;
+    wrap.appendChild(card);
+  });
+  wrap.querySelectorAll('[data-redit]').forEach(b=> b.onclick=()=>openRemindModal(b.dataset.redit));
+}
+$('#notifToggle').onclick = async ()=>{
+  if(!state.settings.notif){
+    if('Notification' in window){
+      const p = await Notification.requestPermission();
+      if(p!=='granted'){ toast('通知が許可されませんでした'); return; }
+    } else { toast('この端末は通知に対応していません'); return; }
+  }
+  state.settings.notif = !state.settings.notif;
+  saveLocal(); renderReminders();
+};
+$('#snoozeToggle').onclick = ()=>{ state.settings.snooze=!state.settings.snooze; saveLocal(); renderReminders(); };
+
+function openRemindModal(id){
+  editingRemindId = id||null;
+  const r = id? state.reminders.find(x=>x.id===id) : {time:'08:00',slot:'morning',methods:['browser']};
+  $('#remindModalTitle').textContent = id?'リマインダーを編集':'リマインダーを追加';
+  $('#rTime').value = r.time;
+  $('#rSlot').value = r.slot;
+  $$('#rMethods .chip').forEach(c=> c.classList.toggle('on', r.methods.includes(c.dataset.m)));
+  $('#deleteRemindBtn').style.display = id?'block':'none';
+  openModal('remindModal');
+}
+$('#addRemindBtn').onclick = ()=>openRemindModal(null);
+$$('#rMethods .chip').forEach(c=> c.onclick=()=>c.classList.toggle('on'));
+$('#saveRemindBtn').onclick = ()=>{
+  const methods = [...$$('#rMethods .chip.on')].map(c=>c.dataset.m);
+  if(methods.length===0){ toast('通知方法を選んでください'); return; }
+  const data = { time:$('#rTime').value, slot:$('#rSlot').value, methods };
+  if(editingRemindId){ const r=state.reminders.find(x=>x.id===editingRemindId); Object.assign(r,data); }
+  else{ data.id=uid(); data.lastFired=''; state.reminders.push(data); }
+  saveLocal(); renderReminders(); closeModal('remindModal');
+  if(!state.settings.notif && methods.includes('browser')) toast('保存しました（通知を有効にしてください）');
+  else toast('保存しました');
+};
+$('#deleteRemindBtn').onclick = ()=>{
+  if(!confirm('このリマインダーを削除しますか？')) return;
+  state.reminders = state.reminders.filter(r=>r.id!==editingRemindId);
+  saveLocal(); renderReminders(); closeModal('remindModal');
+};
+$('#closeRemindBtn').onclick = ()=>closeModal('remindModal');
+
+/* 通知チェック（1分ごと） */
+function checkReminders(){
+  if(!state.settings.notif) return;
+  const now = new Date();
+  const hm = String(now.getHours()).padStart(2,'0')+':'+String(now.getMinutes()).padStart(2,'0');
+  const ds = fmtDate(now);
+  state.reminders.forEach(r=>{
+    if(r.time===hm && r.lastFired!==ds+' '+hm){
+      r.lastFired = ds+' '+hm;
+      fireReminder(r);
+      saveLocal();
+    }
+  });
+}
+function fireReminder(r){
+  const slot = SLOTS.find(s=>s.key===r.slot);
+  const pending = medsForSlot(r.slot).filter(m=>!getLog(fmtDate(new Date()))[r.slot].includes(m.id));
+  const body = pending.length? `${slot.label}のお薬 ${pending.length}件：${pending.map(m=>m.name).join('、')}` : `${slot.label}のお薬の時間です`;
+  if(r.methods.includes('browser') && 'Notification' in window && Notification.permission==='granted'){
+    const n = new Notification('💊 MediNote — お薬の時間です', {body, tag:r.id});
+    n.onclick = ()=>{ window.focus(); switchTab('today'); };
+    // 再通知
+    if(state.settings.snooze && pending.length){
+      setTimeout(()=>{
+        const stillPending = medsForSlot(r.slot).filter(m=>!getLog(fmtDate(new Date()))[r.slot].includes(m.id));
+        if(stillPending.length && Notification.permission==='granted'){
+          new Notification('🔔 MediNote — 再通知', {body:`まだ服用していないお薬があります：${stillPending.map(m=>m.name).join('、')}`, tag:r.id+'_s'});
+        }
+      }, state.settings.snoozeMin*60*1000);
+    }
+  }
+  if(r.methods.includes('line') && cfg.lineHook){
+    fetch(cfg.lineHook,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({message:'💊 MediNote: '+body})}).catch(()=>{});
+  }
+}
+setInterval(checkReminders, 30000);
+
+/* ============================================================
+   病院用まとめ
+   ============================================================ */
+function renderHospital(){
+  const DAYS = 14;
+  $('#rangeDays').textContent = DAYS;
+  $('#statMeds').textContent = state.meds.length;
+
+  // お薬一覧
+  const hm = $('#hospMeds');
+  if(state.meds.length===0){ hm.innerHTML='<div class="muted">登録されたお薬はありません</div>'; }
+  else hm.innerHTML = state.meds.map(m=>{
+    const times = m.timings.map(t=>SLOTS.find(s=>s.key===t)?.label).filter(Boolean).join('・');
+    return `<div style="padding:9px 0;border-bottom:1px solid var(--line)">
+      <div style="font-weight:600">${esc(m.name)}</div>
+      <div class="muted">${[MEAL_LABEL[m.meal],m.dose,times].filter(Boolean).join(' / ')}</div></div>`;
+  }).join('');
+
+  // 服薬率計算（過去DAYS日）
+  let totalExpected=0, totalTaken=0;
+  const perMed = {};
+  state.meds.forEach(m=> perMed[m.id]={exp:0,taken:0,name:m.name});
+  for(let i=0;i<DAYS;i++){
+    const d=new Date(); d.setDate(d.getDate()-i); const ds=fmtDate(d);
+    const log = state.logs[ds];
+    state.meds.forEach(m=>{
+      m.timings.forEach(t=>{
+        totalExpected++; perMed[m.id].exp++;
+        if(log && log[t] && log[t].includes(m.id)){ totalTaken++; perMed[m.id].taken++; }
+      });
+    });
+  }
+  const rate = totalExpected? Math.round(totalTaken/totalExpected*100):0;
+  $('#statRate').textContent = totalExpected? rate+'%':'—';
+
+  const tb = $('#hospTable');
+  tb.innerHTML = state.meds.length? state.meds.map(m=>{
+    const p = perMed[m.id]; const r = p.exp? Math.round(p.taken/p.exp*100):0;
+    return `<tr><td>${esc(m.name)}</td>
+      <td><div style="display:flex;align-items:center;gap:8px"><div class="adh-bar" style="flex:1"><i style="width:${r}%"></i></div><span style="font-size:.78rem;white-space:nowrap">${r}%</span></div></td></tr>`;
+  }).join('') : '<tr><td colspan="2" class="muted">データなし</td></tr>';
+}
+$('#printBtn').onclick = ()=>window.print();
+
+/* ============================================================
+   AIスキャン（Claude API）
+   ============================================================ */
+$('#scanBtn').onclick = ()=>{ resetScan(); openModal('scanModal'); };
+$('#closeScanBtn').onclick = ()=>closeModal('scanModal');
+function resetScan(){ scanImage=null; $('#scanPreview').innerHTML=''; $('#scanResult').innerHTML=''; $('#runScanBtn').style.display='none'; $('#scanFile').value=''; }
+
+$('#scanFile').onchange = (e)=>{
+  const file = e.target.files[0]; if(!file) return;
+  const reader = new FileReader();
+  reader.onload = ()=>{
+    const dataUrl = reader.result;
+    scanImage = { dataUrl, mediaType:file.type||'image/jpeg', b64: dataUrl.split(',')[1] };
+    $('#scanPreview').innerHTML = `<div class="preview"><img src="${dataUrl}"></div>`;
+    $('#runScanBtn').style.display='flex';
+    $('#scanResult').innerHTML='';
+  };
+  reader.readAsDataURL(file);
+};
+
+$('#runScanBtn').onclick = async ()=>{
+  if(!scanImage) return;
+  if(!cfg.claudeKey){ toast('設定画面でClaude APIキーを登録してください'); switchTab('account'); closeModal('scanModal'); return; }
+  const btn = $('#runScanBtn');
+  btn.disabled=true; btn.innerHTML='<span class="spinner"></span> 読み取り中…';
+  try{
+    const meds = await callClaudeVision(scanImage);
+    renderScanResult(meds);
+  }catch(err){
+    $('#scanResult').innerHTML = `<div class="ai-result" style="color:var(--danger)">読み取りに失敗しました：${esc(err.message)}</div>`;
+  }finally{
+    btn.disabled=false; btn.innerHTML='🔍 AIで読み取る';
+  }
+};
+
+async function callClaudeVision(img){
+  const schema = {
+    type:'object',
+    properties:{
+      medications:{ type:'array', items:{ type:'object', properties:{
+        name:{type:'string', description:'お薬の名前（規格・mgも含む）'},
+        dose:{type:'string', description:'1回の服用量。例: 1錠, 2カプセル'},
+        meal:{type:'string', enum:['none','before','after','between'], description:'食事との関係'},
+        timings:{type:'array', items:{type:'string', enum:['morning','noon','evening','bed']}, description:'服用タイミング'},
+        note:{type:'string', description:'補足・注意事項（なければ空文字）'}
+      }, required:['name','dose','meal','timings','note'], additionalProperties:false } }
+    },
+    required:['medications'], additionalProperties:false
+  };
+  const body = {
+    model:'claude-opus-4-8',
+    max_tokens:1500,
+    messages:[{ role:'user', content:[
+      { type:'image', source:{ type:'base64', media_type:img.mediaType, data:img.b64 } },
+      { type:'text', text:'この画像（お薬手帳・処方箋・薬の袋など）から、処方されているお薬の情報を読み取ってください。お薬ごとに名前・1回の服用量・食事との関係・服用タイミング（朝/昼/夜/寝る前）・注意事項を抽出してください。日本語で記載してください。読み取れない項目は空文字または空配列にしてください。' }
+    ]}],
+    output_config:{ format:{ type:'json_schema', schema } }
+  };
+  const res = await fetch('https://api.anthropic.com/v1/messages',{
+    method:'POST',
+    headers:{
+      'content-type':'application/json',
+      'x-api-key':cfg.claudeKey,
+      'anthropic-version':'2023-06-01',
+      'anthropic-dangerous-direct-browser-access':'true'
+    },
+    body: JSON.stringify(body)
+  });
+  if(!res.ok){
+    let msg = 'APIエラー ('+res.status+')';
+    try{ const e=await res.json(); if(e.error?.message) msg=e.error.message; }catch(_){}
+    throw new Error(msg);
+  }
+  const data = await res.json();
+  const txt = (data.content||[]).filter(b=>b.type==='text').map(b=>b.text).join('');
+  let parsed;
+  try{ parsed = JSON.parse(txt); }
+  catch(_){ const m=txt.match(/\{[\s\S]*\}/); if(m) parsed=JSON.parse(m[0]); else throw new Error('応答を解析できませんでした'); }
+  return parsed.medications||[];
+}
+
+function renderScanResult(meds){
+  if(!meds.length){ $('#scanResult').innerHTML='<div class="ai-result">お薬情報を読み取れませんでした。別の写真でお試しください。</div>'; return; }
+  window._scanMeds = meds;
+  $('#scanResult').innerHTML = `
+    <div class="ai-result">
+      <div style="font-weight:700;margin-bottom:8px">${meds.length}件のお薬を読み取りました</div>
+      ${meds.map((m,i)=>{
+        const times = (m.timings||[]).map(t=>SLOTS.find(s=>s.key===t)?.label).filter(Boolean).join('・');
+        return `<div style="padding:8px 0;border-top:1px solid var(--line)">
+          <label style="display:flex;gap:8px;align-items:flex-start;cursor:pointer">
+            <input type="checkbox" class="scanpick" data-i="${i}" checked style="margin-top:5px">
+            <div><div style="font-weight:600">${esc(m.name)}</div>
+            <div class="muted">${[MEAL_LABEL[m.meal],m.dose,times].filter(Boolean).join(' / ')||'詳細なし'}</div>
+            ${m.note?`<div class="muted">📝 ${esc(m.note)}</div>`:''}</div>
+          </label></div>`;
+      }).join('')}
+      <button class="btn" id="importScanBtn" style="margin-top:12px">選択したお薬を登録する</button>
+    </div>`;
+  $('#importScanBtn').onclick = importScanned;
+}
+function importScanned(){
+  const picks = [...$$('.scanpick:checked')].map(c=>+c.dataset.i);
+  let count=0;
+  picks.forEach(i=>{
+    const m = window._scanMeds[i];
+    const timings = (m.timings||[]).filter(t=>['morning','noon','evening','bed'].includes(t));
+    state.meds.push({ id:uid(), name:m.name||'お薬', dose:m.dose||'', meal:['none','before','after','between'].includes(m.meal)?m.meal:'none', timings: timings.length?timings:['morning'], note:m.note||'' });
+    count++;
+  });
+  saveLocal(); renderMedList(); renderToday(); closeModal('scanModal');
+  switchTab('meds');
+  toast(`${count}件のお薬を登録しました`);
+}
+
+/* ============================================================
+   Google OAuth + Sheets 同期
+   ============================================================ */
+const GOOGLE_SCOPES = 'https://www.googleapis.com/auth/drive.file openid email profile';
+const SHEET_NAME = 'MediNote_Data';
+
+function initGoogleAuth(){
+  if(!cfg.googleId) return;
+  if(typeof google==='undefined' || !google.accounts) { setTimeout(initGoogleAuth, 600); return; }
+  try{
+    tokenClient = google.accounts.oauth2.initTokenClient({
+      client_id: cfg.googleId,
+      scope: GOOGLE_SCOPES,
+      callback: async (resp)=>{
+        if(resp.error){ toast('ログインに失敗しました'); return; }
+        accessToken = resp.access_token;
+        await afterSignIn();
+      }
+    });
+  }catch(e){ console.warn(e); }
+}
+function googleSignIn(){
+  if(!cfg.googleId){ toast('先にGoogleクライアントIDを設定してください'); switchTab('account'); return; }
+  if(!tokenClient){ initGoogleAuth(); if(!tokenClient){ toast('Google認証を初期化できませんでした'); return; } }
+  tokenClient.requestAccessToken({prompt:'consent'});
+}
+async function afterSignIn(){
+  try{
+    const r = await fetch('https://www.googleapis.com/oauth2/v3/userinfo',{headers:{Authorization:'Bearer '+accessToken}});
+    user = await r.json();
+    updateAcctUI();
+    toast('ログインしました');
+    await findOrCreateSheet();
+    await cloudLoad();
+  }catch(e){ toast('プロフィール取得に失敗しました'); }
+}
+function updateAcctUI(){
+  const box = $('#acctBox');
+  if(user){
+    box.innerHTML = `<img src="${user.picture||''}" alt=""><span>${esc((user.name||'').split(' ')[0]||'同期中')}</span>`;
+    $('#acctDetail').innerHTML = `<b>${esc(user.name||'')}</b><br>${esc(user.email||'')}<br><span class="muted">Googleドライブに同期中 ☁️</span>`;
+    $('#signinArea').style.display='none';
+    $('#syncArea').style.display='block';
+  }else{
+    box.innerHTML = `<button class="ghost-btn" id="headerSignBtn">ログイン</button>`;
+    $('#headerSignBtn').onclick = googleSignIn;
+    $('#acctDetail').textContent='未ログインです。データはこの端末にのみ保存されます。';
+    $('#signinArea').style.display='block';
+    $('#syncArea').style.display='none';
+  }
+}
+async function findOrCreateSheet(){
+  // 既存ファイル検索
+  const q = encodeURIComponent(`name='${SHEET_NAME}' and mimeType='application/vnd.google-apps.spreadsheet' and trashed=false`);
+  let r = await fetch(`https://www.googleapis.com/drive/v3/files?q=${q}&spaces=drive&fields=files(id,name)`,{headers:{Authorization:'Bearer '+accessToken}});
+  let d = await r.json();
+  if(d.files && d.files.length){ sheetId = d.files[0].id; return; }
+  // 作成
+  r = await fetch('https://sheets.googleapis.com/v4/spreadsheets',{
+    method:'POST', headers:{Authorization:'Bearer '+accessToken,'content-type':'application/json'},
+    body: JSON.stringify({ properties:{ title:SHEET_NAME } })
+  });
+  d = await r.json();
+  sheetId = d.spreadsheetId;
+  await cloudSave(); // 初回保存
+}
+async function cloudSave(){
+  if(!accessToken || !sheetId) return;
+  try{
+    const payload = JSON.stringify(state);
+    await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/A1?valueInputOption=RAW`,{
+      method:'PUT', headers:{Authorization:'Bearer '+accessToken,'content-type':'application/json'},
+      body: JSON.stringify({ range:'A1', majorDimension:'ROWS', values:[[payload]] })
+    });
+  }catch(e){ console.warn('cloudSave failed', e); }
+}
+async function cloudLoad(){
+  if(!accessToken || !sheetId) return;
+  try{
+    const r = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/A1`,{headers:{Authorization:'Bearer '+accessToken}});
+    const d = await r.json();
+    const cell = d.values?.[0]?.[0];
+    if(cell){
+      const remote = JSON.parse(cell);
+      // クラウド側を採用（簡易マージ：登録数が多い方を優先）
+      const localCount = state.meds.length + Object.keys(state.logs).length;
+      const remoteCount = (remote.meds?.length||0) + Object.keys(remote.logs||{}).length;
+      if(remoteCount >= localCount){
+        state = Object.assign({meds:[],logs:{},reminders:[],settings:state.settings}, remote);
+        localStorage.setItem(LS_KEY, JSON.stringify(state));
+        renderAll();
+        toast('クラウドから読み込みました');
+      } else {
+        await cloudSave();
+      }
+    }
+  }catch(e){ console.warn('cloudLoad failed', e); }
+}
+function googleSignOut(){
+  if(accessToken && typeof google!=='undefined' && google.accounts){ try{ google.accounts.oauth2.revoke(accessToken); }catch(_){} }
+  accessToken=null; user=null; sheetId=null;
+  updateAcctUI(); toast('ログアウトしました');
+}
+
+/* ============================================================
+   設定画面イベント
+   ============================================================ */
+$('#googleSignBtn').onclick = googleSignIn;
+$('#signOutBtn').onclick = googleSignOut;
+$('#syncNowBtn').onclick = async ()=>{ if(!accessToken){toast('ログインしてください');return;} await cloudSave(); toast('同期しました'); };
+$('#saveGoogleId').onclick = ()=>{ cfg.googleId=$('#cfgGoogleId').value.trim(); saveCfg(); initGoogleAuth(); toast('保存しました'); };
+$('#saveClaudeKey').onclick = ()=>{ cfg.claudeKey=$('#cfgClaudeKey').value.trim(); saveCfg(); toast('保存しました'); };
+$('#saveLineHook').onclick = ()=>{ cfg.lineHook=$('#cfgLineHook').value.trim(); saveCfg(); toast('保存しました'); };
+$('#exportBtn').onclick = ()=>{
+  const blob = new Blob([JSON.stringify(state,null,2)],{type:'application/json'});
+  const a = document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='medinote_backup.json'; a.click();
+};
+$('#resetBtn').onclick = ()=>{
+  if(!confirm('すべてのお薬・記録を削除します。よろしいですか？')) return;
+  state = {meds:[],logs:{},reminders:[],settings:{notif:false,snooze:true,snoozeMin:10}};
+  saveLocal(); renderAll(); toast('削除しました');
+};
+
+/* ============================================================
+   モーダル共通
+   ============================================================ */
+function openModal(id){ $('#'+id).classList.add('open'); document.body.style.overflow='hidden'; }
+function closeModal(id){ $('#'+id).classList.remove('open'); document.body.style.overflow=''; }
+$$('.modal').forEach(m=> m.addEventListener('click', e=>{ if(e.target===m){ m.classList.remove('open'); document.body.style.overflow=''; } }));
+
+/* ============================================================
+   初期化
+   ============================================================ */
+function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+function renderAll(){ renderToday(); renderMedList(); renderReminders(); }
+
+function init(){
+  loadLocal();
+  // 設定欄反映
+  $('#cfgGoogleId').value = cfg.googleId;
+  $('#cfgClaudeKey').value = cfg.claudeKey;
+  $('#cfgLineHook').value = cfg.lineHook;
+  updateAcctUI();
+  renderAll();
+  if($('#headerSignBtn')) $('#headerSignBtn').onclick = googleSignIn;
+
+  // Google SDK 読み込み
+  if(cfg.googleId){
+    const s = document.createElement('script');
+    s.src='https://accounts.google.com/gsi/client'; s.async=true; s.defer=true;
+    s.onload = initGoogleAuth;
+    document.head.appendChild(s);
+  }
+}
+init();
+</script>
+</body>
+</html>

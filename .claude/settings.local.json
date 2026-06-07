@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "Skill(claude-api)",
+      "Bash(node -e ' *)",
+      "Bash(node --check /tmp/mn.js)",
+      "Bash(rm /tmp/mn.js)",
+      "Bash(python3 *)",
+      "Bash(curl -s -o /dev/null -w \"HTTP %{http_code}  \\(%{size_download} bytes\\)\\\\n\" http://localhost:8000/index.html)"
+    ]
+  }
+}
