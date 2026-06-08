@@ -1,6 +1,6 @@
 // アプリから服薬リマインダーのスケジュールを保存する
 // POST /api/schedule { userId, reminders:[{time,slot}], tzOffset }
-import { kv } from '@vercel/kv';
+import { kv } from './_kv.js';
 
 export default async function handler(req, res){
   res.setHeader('Access-Control-Allow-Origin', '*');

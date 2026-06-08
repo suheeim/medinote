@@ -1,6 +1,6 @@
 // LINE Login のコールバック。アクセストークン取得 → userId 取得 → 保存 → アプリへ戻す
 // GET /api/line/callback?code=...&state=...
-import { kv } from '@vercel/kv';
+import { kv } from '../_kv.js';
 
 export default async function handler(req, res){
   const CHANNEL_ID = process.env.LINE_LOGIN_CHANNEL_ID || '2010328955';

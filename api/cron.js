@@ -1,6 +1,6 @@
 // Vercel Cron が毎分呼び出す。各ユーザーの服薬時刻が来ていれば LINE にプッシュ送信
 // GET /api/cron
-import { kv } from '@vercel/kv';
+import { kv } from './_kv.js';
 
 const SLOT_LABEL = { morning: '朝', noon: '昼', evening: '夜', bed: '寝る前' };
 
