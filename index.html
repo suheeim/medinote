@@ -243,6 +243,14 @@
       <h1>リマインダー</h1>
       <button class="btn sm" id="addRemindBtn">＋ 追加</button>
     </div>
+    <div class="banner" id="permPrompt" style="display:none;background:#eaf5f1;border-color:#bfe0d6;color:var(--brand-dark);align-items:center">
+      <span style="font-size:1.3rem">🔔</span>
+      <div style="flex:1">
+        <div style="font-weight:700">通知を許可してください</div>
+        <div class="muted" style="color:var(--brand-dark)">下のボタンを押すと許可ダイアログが表示されます</div>
+      </div>
+      <button class="btn sm" id="permBtn" style="white-space:nowrap">許可する</button>
+    </div>
     <div class="card">
       <div class="switch">
         <div>
@@ -710,6 +718,7 @@ function renderReminders(){
   $('#notifToggle').classList.toggle('on', state.settings.notif);
   $('#snoozeToggle').classList.toggle('on', state.settings.snooze);
   $('#snoozeMinLbl').textContent = state.settings.snoozeMin;
+  updatePermPrompt();
 
   const wrap = $('#remindList'); wrap.innerHTML='';
   if(state.reminders.length===0){
@@ -731,12 +740,37 @@ function renderReminders(){
   });
   wrap.querySelectorAll('[data-redit]').forEach(b=> b.onclick=()=>openRemindModal(b.dataset.redit));
 }
+// 通知許可をユーザー操作（タップ）の中で要求する（iOS必須）
+async function requestNotifPermission(){
+  if(!('Notification' in window)){ toast('この端末は通知に対応していません'); return false; }
+  let perm = Notification.permission;
+  if(perm==='default'){
+    try{ perm = await Notification.requestPermission(); }catch(_){ perm = Notification.permission; }
+  }
+  if(perm==='granted') return true;
+  if(perm==='denied'){ toast('通知がブロックされています。端末の設定から許可してください'); }
+  return false;
+}
+// 許可バナーの表示/非表示
+function updatePermPrompt(){
+  const el = $('#permPrompt'); if(!el) return;
+  const need = ('Notification' in window) && Notification.permission!=='granted';
+  el.style.display = need? 'flex' : 'none';
+}
+$('#permBtn').onclick = async ()=>{
+  const ok = await requestNotifPermission();
+  if(ok){
+    state.settings.notif = true; saveLocal();
+    renderReminders(); scheduleReminders();
+    toast('通知を許可しました');
+  }
+  updatePermPrompt();
+};
+
 $('#notifToggle').onclick = async ()=>{
   if(!state.settings.notif){
-    if('Notification' in window){
-      const p = await Notification.requestPermission();
-      if(p!=='granted'){ toast('通知が許可されませんでした'); return; }
-    } else { toast('この端末は通知に対応していません'); return; }
+    const ok = await requestNotifPermission();
+    if(!ok){ updatePermPrompt(); return; }
   }
   state.settings.notif = !state.settings.notif;
   saveLocal(); renderReminders();
@@ -1182,13 +1216,9 @@ async function setupPWA(){
     });
     await navigator.serviceWorker.ready;
 
-    // 通知が未許可なら、アプリを開いたタイミングで一度だけ許可を求める
-    if('Notification' in window && Notification.permission==='default'){
-      try{
-        const p = await Notification.requestPermission();
-        if(p==='granted'){ state.settings.notif = true; saveLocal(); renderReminders(); }
-      }catch(_){}
-    }
+    // ※ iOSでは通知許可は「ユーザーのタップ」でしか求められないため、
+    //    自動リクエストはせず、リマインダー画面の「許可する」ボタンで要求する。
+    updatePermPrompt();
     // 服薬時刻の通知を予約（対応ブラウザのみバックグラウンド配信）
     scheduleReminders();
   }catch(err){ console.warn('SW登録に失敗:', err); }
