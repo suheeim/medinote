@@ -51,14 +51,20 @@ Vercel Cron(毎分) ──▶ /api/cron ──▶ 時刻一致でLINE Messaging 
 
 ## 4. Cron（毎分実行）について
 
-`vercel.json` で `/api/cron` を毎分実行する設定にしています。
+> ⚠️ **重要**：Vercel無料(Hobby)プランは「1日1回より頻繁なCron」を許可せず、`vercel.json` に毎分Cronを書くと**デプロイが失敗**します。
+> そのため `vercel.json` にはCronを入れていません。**外部の無料Cronから毎分叩く**方式にします。
 
-- **Vercel Pro**：そのまま毎分動きます。
-- **Vercel Hobby（無料）**：Cron は**1日1回**までの制限があります。毎分通知したい場合は、無料の外部Cron（例：[cron-job.org](https://cron-job.org)）から
-  ```
-  https://project-53ect.vercel.app/api/cron
-  ```
-  を1分間隔で叩く設定にしてください。
+### 外部Cronの設定（無料・どのプランでもOK）
+
+1. [cron-job.org](https://cron-job.org) に無料登録
+2. 新しいCronジョブを作成：
+   - **URL**：`https://project-53ect.vercel.app/api/cron`
+   - **実行間隔**：毎分（every 1 minute）
+3. 保存して有効化
+
+これで毎分 `/api/cron` が呼ばれ、服薬時刻が一致したユーザーにLINE通知が送られます。
+
+（Vercel Proプランなら、`vercel.json` に `{"crons":[{"path":"/api/cron","schedule":"* * * * *"}]}` を書けば外部Cron不要です）
 
 ## 5. 使い方（アプリ側）
 
