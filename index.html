@@ -1201,6 +1201,7 @@ function init(){
   }
 
   setupPWA();
+  armAutoPermission();
 }
 
 /* ============================================================
@@ -1215,13 +1216,27 @@ async function setupPWA(){
       if(e.data && e.data.type==='open-today') switchTab('today');
     });
     await navigator.serviceWorker.ready;
-
-    // ※ iOSでは通知許可は「ユーザーのタップ」でしか求められないため、
-    //    自動リクエストはせず、リマインダー画面の「許可する」ボタンで要求する。
     updatePermPrompt();
     // 服薬時刻の通知を予約（対応ブラウザのみバックグラウンド配信）
     scheduleReminders();
   }catch(err){ console.warn('SW登録に失敗:', err); }
+}
+
+/* アプリ起動後、最初の画面タップで自動的に通知許可を求める
+   （iOSは「ユーザー操作」内でしか許可ダイアログを出せないため、
+     起動直後のタップを利用して実質「開いてすぐ」表示する） */
+function armAutoPermission(){
+  if(!('Notification' in window) || Notification.permission!=='default') return;
+  const evs = ['pointerdown','touchend','click'];
+  const cleanup = ()=> evs.forEach(ev=> document.removeEventListener(ev, handler));
+  async function handler(){
+    if(Notification.permission!=='default'){ cleanup(); return; }
+    cleanup();
+    const ok = await requestNotifPermission();
+    if(ok){ state.settings.notif = true; saveLocal(); renderReminders(); scheduleReminders(); }
+    updatePermPrompt();
+  }
+  evs.forEach(ev=> document.addEventListener(ev, handler, {passive:true}));
 }
 init();
 </script>
