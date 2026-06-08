@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="theme-color" content="#2f7d6e">
-<title>MediNote — お薬管理</title>
+<title>わたしの薬ノート — お薬管理</title>
 <style>
   :root{
     --bg:#f3f6f5;
@@ -129,9 +129,9 @@
 
   /* Bottom nav */
   nav.tabbar{position:fixed;bottom:0;left:0;right:0;background:#fff;border-top:1px solid var(--line);display:flex;z-index:40;padding:6px 4px env(safe-area-inset-bottom);box-shadow:0 -2px 14px rgba(31,60,55,.06)}
-  nav.tabbar button{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;padding:7px 0;color:var(--ink-soft);font-size:.66rem;font-weight:600}
+  nav.tabbar button{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;padding:7px 2px;margin:0 2px;border-radius:12px;color:var(--ink-soft);font-size:.66rem;font-weight:600;transition:background .15s}
   nav.tabbar button .ic{font-size:1.32rem;line-height:1}
-  nav.tabbar button.on{color:var(--brand)}
+  nav.tabbar button.on{color:var(--brand);background:var(--brand-soft)}
 
   /* Modal */
   .modal{position:fixed;inset:0;background:rgba(20,35,32,.5);display:none;align-items:flex-end;justify-content:center;z-index:60;padding:0}
@@ -179,7 +179,7 @@
 <body>
 
 <header class="app">
-  <div class="logo"><span class="pill">💊</span> MediNote</div>
+  <div class="logo"><span class="pill">💊</span> わたしの薬ノート</div>
   <div class="acct" id="acctBox">
     <button class="ghost-btn" id="headerSignBtn">ログイン</button>
   </div>
@@ -327,7 +327,7 @@
       <button class="btn sec sm" id="exportBtn" style="width:100%;margin-bottom:8px">⬇️ データを書き出し（JSON）</button>
       <button class="btn warn sm" id="resetBtn" style="width:100%">すべてのデータを削除</button>
     </div>
-    <div class="muted" style="text-align:center;font-size:.74rem;margin-top:8px">MediNote · 単一ファイル版</div>
+    <div class="muted" style="text-align:center;font-size:.74rem;margin-top:8px">わたしの薬ノート · 単一ファイル版</div>
   </section>
 </main>
 
@@ -416,13 +416,21 @@
   <div class="sheet">
     <div class="grab"></div>
     <h2>📷 写真からお薬を読み取り</h2>
-    <p class="muted">お薬手帳・処方箋・薬の袋などの写真を撮影またはアップロードしてください。AIが内容を読み取ります。</p>
-    <label class="drop" id="dropArea" for="scanFile" style="display:block">
-      <div class="big">🖼️</div>
-      <div style="font-weight:700">写真を選択 / 撮影</div>
-      <div class="muted">タップして画像を選んでください</div>
-    </label>
-    <input id="scanFile" type="file" accept="image/*" capture="environment" style="display:none">
+    <p class="muted">読み取る写真の種類と取得元を選んでください。AIが内容を読み取ります。</p>
+
+    <div style="font-size:.82rem;font-weight:600;color:var(--ink-soft);margin-bottom:6px">① 読み取る写真の種類</div>
+    <div class="chips" id="scanMode" style="margin-bottom:15px">
+      <button type="button" class="chip on" data-mode="photo">💊 薬の写真</button>
+      <button type="button" class="chip" data-mode="list">📋 薬一覧のテキスト</button>
+    </div>
+
+    <div style="font-size:.82rem;font-weight:600;color:var(--ink-soft);margin-bottom:6px">② 写真の取得元</div>
+    <div style="display:flex;gap:10px">
+      <button type="button" class="btn sec" id="cameraBtn" style="flex:1">📷 カメラで撮影</button>
+      <button type="button" class="btn sec" id="albumBtn" style="flex:1">🖼️ アルバムから選択</button>
+    </div>
+    <input id="scanFileCamera" type="file" accept="image/*" capture="environment" style="display:none">
+    <input id="scanFileAlbum" type="file" accept="image/*" style="display:none">
     <div id="scanPreview"></div>
     <button class="btn" id="runScanBtn" style="margin-top:12px;display:none">🔍 AIで読み取る</button>
     <div id="scanResult"></div>
@@ -456,7 +464,9 @@ let state = {
   reminders: [],     // {id,time,slot,methods:[]}
   settings: {notif:false, snooze:true, snoozeMin:10}
 };
-let cfg = { googleId:'', claudeKey:'', lineHook:'' };
+// Google OAuth クライアントID（コードに直接埋め込み。OAuthクライアントIDは公開前提の値）
+const GOOGLE_CLIENT_ID = '891983471844-u0s3s0aumkpi4a5ufrl6djbq60m5e20n.apps.googleusercontent.com';
+let cfg = { googleId:GOOGLE_CLIENT_ID, claudeKey:'', lineHook:'' };
 
 let viewDate = new Date();       // 表示中の日付
 let editingMedId = null;
@@ -480,6 +490,8 @@ function toast(msg){ const t=$('#toast'); t.textContent=msg; t.classList.add('sh
 function loadLocal(){
   try{ const s=JSON.parse(localStorage.getItem(LS_KEY)); if(s){ state = Object.assign(state, s); state.settings = Object.assign({notif:false,snooze:true,snoozeMin:10}, s.settings||{}); } }catch(e){}
   try{ const c=JSON.parse(localStorage.getItem(CFG_KEY)); if(c) cfg = Object.assign(cfg, c); }catch(e){}
+  // 埋め込みクライアントIDを常に優先（過去に空IDが保存されていても確実に有効化）
+  if(!cfg.googleId) cfg.googleId = GOOGLE_CLIENT_ID;
 }
 function saveLocal(){
   localStorage.setItem(LS_KEY, JSON.stringify(state));
@@ -753,20 +765,20 @@ function fireReminder(r){
   const pending = medsForSlot(r.slot).filter(m=>!getLog(fmtDate(new Date()))[r.slot].includes(m.id));
   const body = pending.length? `${slot.label}のお薬 ${pending.length}件：${pending.map(m=>m.name).join('、')}` : `${slot.label}のお薬の時間です`;
   if(r.methods.includes('browser') && 'Notification' in window && Notification.permission==='granted'){
-    const n = new Notification('💊 MediNote — お薬の時間です', {body, tag:r.id});
+    const n = new Notification('💊 わたしの薬ノート — お薬の時間です', {body, tag:r.id});
     n.onclick = ()=>{ window.focus(); switchTab('today'); };
     // 再通知
     if(state.settings.snooze && pending.length){
       setTimeout(()=>{
         const stillPending = medsForSlot(r.slot).filter(m=>!getLog(fmtDate(new Date()))[r.slot].includes(m.id));
         if(stillPending.length && Notification.permission==='granted'){
-          new Notification('🔔 MediNote — 再通知', {body:`まだ服用していないお薬があります：${stillPending.map(m=>m.name).join('、')}`, tag:r.id+'_s'});
+          new Notification('🔔 わたしの薬ノート — 再通知', {body:`まだ服用していないお薬があります：${stillPending.map(m=>m.name).join('、')}`, tag:r.id+'_s'});
         }
       }, state.settings.snoozeMin*60*1000);
     }
   }
   if(r.methods.includes('line') && cfg.lineHook){
-    fetch(cfg.lineHook,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({message:'💊 MediNote: '+body})}).catch(()=>{});
+    fetch(cfg.lineHook,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({message:'💊 わたしの薬ノート: '+body})}).catch(()=>{});
   }
 }
 setInterval(checkReminders, 30000);
@@ -818,11 +830,25 @@ $('#printBtn').onclick = ()=>window.print();
 /* ============================================================
    AIスキャン（Claude API）
    ============================================================ */
+let scanMode = 'photo';          // 'photo' | 'list'
 $('#scanBtn').onclick = ()=>{ resetScan(); openModal('scanModal'); };
 $('#closeScanBtn').onclick = ()=>closeModal('scanModal');
-function resetScan(){ scanImage=null; $('#scanPreview').innerHTML=''; $('#scanResult').innerHTML=''; $('#runScanBtn').style.display='none'; $('#scanFile').value=''; }
+function resetScan(){
+  scanImage=null; scanMode='photo';
+  $('#scanPreview').innerHTML=''; $('#scanResult').innerHTML=''; $('#runScanBtn').style.display='none';
+  $('#scanFileCamera').value=''; $('#scanFileAlbum').value='';
+  $$('#scanMode .chip').forEach(c=>c.classList.toggle('on', c.dataset.mode==='photo'));
+}
 
-$('#scanFile').onchange = (e)=>{
+$$('#scanMode .chip').forEach(c=> c.onclick=()=>{
+  scanMode = c.dataset.mode;
+  $$('#scanMode .chip').forEach(x=>x.classList.toggle('on', x===c));
+});
+
+$('#cameraBtn').onclick = ()=> $('#scanFileCamera').click();
+$('#albumBtn').onclick  = ()=> $('#scanFileAlbum').click();
+
+function handleScanFile(e){
   const file = e.target.files[0]; if(!file) return;
   const reader = new FileReader();
   reader.onload = ()=>{
@@ -833,7 +859,9 @@ $('#scanFile').onchange = (e)=>{
     $('#scanResult').innerHTML='';
   };
   reader.readAsDataURL(file);
-};
+}
+$('#scanFileCamera').onchange = handleScanFile;
+$('#scanFileAlbum').onchange  = handleScanFile;
 
 $('#runScanBtn').onclick = async ()=>{
   if(!scanImage) return;
@@ -841,7 +869,7 @@ $('#runScanBtn').onclick = async ()=>{
   const btn = $('#runScanBtn');
   btn.disabled=true; btn.innerHTML='<span class="spinner"></span> 読み取り中…';
   try{
-    const meds = await callClaudeVision(scanImage);
+    const meds = await callClaudeVision(scanImage, scanMode);
     renderScanResult(meds);
   }catch(err){
     $('#scanResult').innerHTML = `<div class="ai-result" style="color:var(--danger)">読み取りに失敗しました：${esc(err.message)}</div>`;
@@ -850,7 +878,10 @@ $('#runScanBtn').onclick = async ()=>{
   }
 };
 
-async function callClaudeVision(img){
+async function callClaudeVision(img, mode='photo'){
+  const promptText = mode==='list'
+    ? 'この画像はお薬の一覧表・処方箋・お薬手帳のテキスト部分など、複数のお薬名が文字で並んでいるリストです。記載されている文字情報を読み取り、お薬ごとに名前・1回の服用量・食事との関係・服用タイミング（朝/昼/夜/寝る前）・注意事項を抽出してください。表や箇条書きの各行を1つのお薬として扱ってください。日本語で記載してください。読み取れない項目は空文字または空配列にしてください。'
+    : 'この画像（お薬の袋・包装・PTPシート・薬そのものの写真など）から、写っているお薬の情報を読み取ってください。お薬ごとに名前・1回の服用量・食事との関係・服用タイミング（朝/昼/夜/寝る前）・注意事項を抽出してください。日本語で記載してください。読み取れない項目は空文字または空配列にしてください。';
   const schema = {
     type:'object',
     properties:{
@@ -869,7 +900,7 @@ async function callClaudeVision(img){
     max_tokens:1500,
     messages:[{ role:'user', content:[
       { type:'image', source:{ type:'base64', media_type:img.mediaType, data:img.b64 } },
-      { type:'text', text:'この画像（お薬手帳・処方箋・薬の袋など）から、処方されているお薬の情報を読み取ってください。お薬ごとに名前・1回の服用量・食事との関係・服用タイミング（朝/昼/夜/寝る前）・注意事項を抽出してください。日本語で記載してください。読み取れない項目は空文字または空配列にしてください。' }
+      { type:'text', text:promptText }
     ]}],
     output_config:{ format:{ type:'json_schema', schema } }
   };
