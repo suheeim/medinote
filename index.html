@@ -266,6 +266,9 @@
         </div>
         <div class="toggle" id="snoozeToggle"><i></i></div>
       </div>
+      <div style="text-align:right;margin-top:10px">
+        <button class="btn sec sm" id="diagBtn" style="border:none;color:var(--ink-soft);padding:4px 6px">🔍 通知の状態を確認</button>
+      </div>
     </div>
     <div id="remindList"></div>
     <div class="banner" style="margin-top:6px">
@@ -740,16 +743,36 @@ function renderReminders(){
   });
   wrap.querySelectorAll('[data-redit]').forEach(b=> b.onclick=()=>openRemindModal(b.dataset.redit));
 }
+// 通知まわりの状態を文字列で返す（画面・Consoleでの診断用）
+function notifDiag(){
+  const hasN = ('Notification' in window);
+  const standalone = (window.navigator.standalone===true) || (window.matchMedia && matchMedia('(display-mode: standalone)').matches);
+  const sw = ('serviceWorker' in navigator);
+  const ctrl = sw && navigator.serviceWorker.controller ? 'あり' : 'なし';
+  return [
+    '— 通知の診断 —',
+    'Notification対応: ' + (hasN?'はい':'いいえ'),
+    '許可状態(permission): ' + (hasN?Notification.permission:'-'),
+    'ホーム画面アプリ(standalone): ' + (standalone?'はい':'いいえ(Safariタブ?)'),
+    'ServiceWorker対応: ' + (sw?'はい':'いいえ') + ' / 制御中: ' + ctrl,
+    'PushManager対応: ' + (('PushManager' in window)?'はい':'いいえ'),
+    '定刻トリガー対応: ' + (hasN && ('showTrigger' in Notification.prototype)?'はい':'いいえ'),
+    'URL: ' + location.href
+  ].join('\n');
+}
+window.notifDiag = notifDiag;   // Consoleから notifDiag() で確認可能
+
 // 通知許可をユーザー操作（タップ）の中で要求する（iOS必須）
 async function requestNotifPermission(){
   if(!('Notification' in window)){ toast('この端末は通知に対応していません'); return false; }
   let perm = Notification.permission;
+  console.log('[通知] 要求前 permission =', perm);
   if(perm==='default'){
-    try{ perm = await Notification.requestPermission(); }catch(_){ perm = Notification.permission; }
+    try{ perm = await Notification.requestPermission(); }
+    catch(e){ console.warn('[通知] requestPermission 例外', e); perm = Notification.permission; }
   }
-  if(perm==='granted') return true;
-  if(perm==='denied'){ toast('通知がブロックされています。端末の設定から許可してください'); }
-  return false;
+  console.log('[通知] 要求後 permission =', perm);
+  return perm==='granted';
 }
 // 許可バナーの表示/非表示
 function updatePermPrompt(){
@@ -758,14 +781,24 @@ function updatePermPrompt(){
   el.style.display = need? 'flex' : 'none';
 }
 $('#permBtn').onclick = async ()=>{
+  console.log('[通知] 許可ボタン タップ\n' + notifDiag());
   const ok = await requestNotifPermission();
   if(ok){
     state.settings.notif = true; saveLocal();
     renderReminders(); scheduleReminders();
     toast('通知を許可しました');
+  }else{
+    const perm = ('Notification' in window) ? Notification.permission : 'unsupported';
+    const head = perm==='denied'
+      ? '⚠️ 通知が「拒否」状態で固定されています。\n\n【解除手順】\n①ホーム画面の「薬ノート」を長押し→アプリを削除\n②Safariで開き直す\n③共有→「ホーム画面に追加」\n④アイコンから起動して、もう一度「許可する」\n\n'
+      : (perm==='unsupported'
+          ? 'この画面では通知を利用できません。Safariのタブではなく、ホーム画面に追加したアプリから開いてください。\n\n'
+          : 'ダイアログを表示できませんでした。\n\n');
+    alert(head + notifDiag());
   }
   updatePermPrompt();
 };
+$('#diagBtn') && ($('#diagBtn').onclick = ()=> alert(notifDiag()));
 
 $('#notifToggle').onclick = async ()=>{
   if(!state.settings.notif){
@@ -1208,9 +1241,11 @@ function init(){
    PWA（Service Worker 登録・通知許可・定刻通知の予約）
    ============================================================ */
 async function setupPWA(){
-  if(!('serviceWorker' in navigator)) return;
+  console.log('[起動] ' + notifDiag());
+  if(!('serviceWorker' in navigator)){ console.warn('[通知] ServiceWorker非対応'); return; }
   try{
-    await navigator.serviceWorker.register('sw.js');
+    const reg = await navigator.serviceWorker.register('sw.js');
+    console.log('[通知] SW登録 scope =', reg.scope);
     // 通知タップでアプリ起動した際に「今日」へ
     navigator.serviceWorker.addEventListener('message', (e)=>{
       if(e.data && e.data.type==='open-today') switchTab('today');
@@ -1226,7 +1261,11 @@ async function setupPWA(){
    （iOSは「ユーザー操作」内でしか許可ダイアログを出せないため、
      起動直後のタップを利用して実質「開いてすぐ」表示する） */
 function armAutoPermission(){
-  if(!('Notification' in window) || Notification.permission!=='default') return;
+  if(!('Notification' in window) || Notification.permission!=='default'){
+    console.log('[通知] 自動要求の準備をスキップ（permission=' + (('Notification' in window)?Notification.permission:'非対応') + '）');
+    return;
+  }
+  console.log('[通知] 最初のタップで許可を要求します');
   const evs = ['pointerdown','touchend','click'];
   const cleanup = ()=> evs.forEach(ev=> document.removeEventListener(ev, handler));
   async function handler(){
