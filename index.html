@@ -4,6 +4,11 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="theme-color" content="#2f7d6e">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-180.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="薬ノート">
 <title>わたしの薬ノート — お薬管理</title>
 <style>
   :root{
@@ -735,6 +740,7 @@ $('#notifToggle').onclick = async ()=>{
   }
   state.settings.notif = !state.settings.notif;
   saveLocal(); renderReminders();
+  scheduleReminders();
 };
 $('#snoozeToggle').onclick = ()=>{ state.settings.snooze=!state.settings.snooze; saveLocal(); renderReminders(); };
 
@@ -752,14 +758,14 @@ $('#saveRemindBtn').onclick = ()=>{
   const data = { time:$('#rTime').value, slot:$('#rSlot').value, methods:['browser'] };
   if(editingRemindId){ const r=state.reminders.find(x=>x.id===editingRemindId); Object.assign(r,data); }
   else{ data.id=uid(); data.lastFired=''; state.reminders.push(data); }
-  saveLocal(); renderReminders(); closeModal('remindModal');
+  saveLocal(); renderReminders(); closeModal('remindModal'); scheduleReminders();
   if(!state.settings.notif) toast('保存しました（通知を有効にしてください）');
   else toast('保存しました');
 };
 $('#deleteRemindBtn').onclick = ()=>{
   if(!confirm('このリマインダーを削除しますか？')) return;
   state.reminders = state.reminders.filter(r=>r.id!==editingRemindId);
-  saveLocal(); renderReminders(); closeModal('remindModal');
+  saveLocal(); renderReminders(); closeModal('remindModal'); scheduleReminders();
 };
 $('#closeRemindBtn').onclick = ()=>closeModal('remindModal');
 
@@ -796,6 +802,39 @@ function fireReminder(r){
   }
 }
 setInterval(checkReminders, 30000);
+
+/* 定刻通知の予約（Notification Triggers 対応ブラウザのみ・バックグラウンド可）
+   ※ iOS Safari は Triggers 非対応のため、アプリを開いている間のみ通知します。
+     アプリを閉じても確実に届けるにはプッシュ配信サーバーが必要です。 */
+async function scheduleReminders(){
+  try{
+    if(!('serviceWorker' in navigator)) return;
+    const reg = await navigator.serviceWorker.ready;
+    if(!('showTrigger' in Notification.prototype)) return;   // iOS等は非対応
+    if(Notification.permission!=='granted' || !state.settings.notif) {
+      reg.active && reg.active.postMessage({type:'schedule', items:[]});
+      return;
+    }
+    const items = [];
+    const now = Date.now();
+    const DAYS = 14;   // 先の14日分を予約（毎日リマインダー想定）
+    state.reminders.forEach(r=>{
+      const slot = SLOTS.find(s=>s.key===r.slot);
+      const [hh,mm] = r.time.split(':').map(Number);
+      for(let d=0; d<DAYS; d++){
+        const t = new Date(); t.setHours(hh, mm, 0, 0); t.setDate(t.getDate()+d);
+        if(t.getTime() <= now) continue;
+        items.push({
+          tag: 'rem-'+r.id+'-'+d,
+          at: t.getTime(),
+          title: '💊 わたしの薬ノート — お薬の時間です',
+          body: `${slot?slot.label:''}のお薬の時間です`
+        });
+      }
+    });
+    reg.active && reg.active.postMessage({type:'schedule', items});
+  }catch(_){}
+}
 
 /* ============================================================
    病院用まとめ
@@ -1126,6 +1165,33 @@ function init(){
     s.onload = initGoogleAuth;
     document.head.appendChild(s);
   }
+
+  setupPWA();
+}
+
+/* ============================================================
+   PWA（Service Worker 登録・通知許可・定刻通知の予約）
+   ============================================================ */
+async function setupPWA(){
+  if(!('serviceWorker' in navigator)) return;
+  try{
+    await navigator.serviceWorker.register('sw.js');
+    // 通知タップでアプリ起動した際に「今日」へ
+    navigator.serviceWorker.addEventListener('message', (e)=>{
+      if(e.data && e.data.type==='open-today') switchTab('today');
+    });
+    await navigator.serviceWorker.ready;
+
+    // 通知が未許可なら、アプリを開いたタイミングで一度だけ許可を求める
+    if('Notification' in window && Notification.permission==='default'){
+      try{
+        const p = await Notification.requestPermission();
+        if(p==='granted'){ state.settings.notif = true; saveLocal(); renderReminders(); }
+      }catch(_){}
+    }
+    // 服薬時刻の通知を予約（対応ブラウザのみバックグラウンド配信）
+    scheduleReminders();
+  }catch(err){ console.warn('SW登録に失敗:', err); }
 }
 init();
 </script>
