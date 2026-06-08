@@ -787,14 +787,14 @@ $('#saveMedBtn').onclick = ()=>{
   const data = { name, kind, dose:$('#mDose').value.trim(), meal:$('#mMeal').value, timings, note:$('#mNote').value.trim() };
   if(editingMedId){ const m=state.meds.find(x=>x.id===editingMedId); Object.assign(m,data); }
   else{ data.id=uid(); state.meds.push(data); }
-  saveLocal(); renderMedList(); renderToday(); closeModal('medModal');
+  saveLocal(); renderMedList(); renderToday(); closeModal('medModal'); postLineSchedule();
   toast('保存しました');
 };
 $('#deleteMedBtn').onclick = ()=>{
   if(!editingMedId) return;
   if(!confirm('このお薬を削除しますか？')) return;
   state.meds = state.meds.filter(m=>m.id!==editingMedId);
-  saveLocal(); renderMedList(); renderToday(); closeModal('medModal');
+  saveLocal(); renderMedList(); renderToday(); closeModal('medModal'); postLineSchedule();
   toast('削除しました');
 };
 $('#closeMedBtn').onclick = ()=>closeModal('medModal');
@@ -865,6 +865,16 @@ function handleLineRedirect(){
   toast('LINE連携が完了しました');
   postLineSchedule();
 }
+// LINE通知のスケジュールを組み立てる
+// お薬が登録されている各時間帯を、その枠の時刻（リマインダー設定 or 既定時刻）で通知する
+function lineReminders(){
+  const map = {};
+  // お薬がある時間帯 → slotTime（リマインダー設定があればその時刻、なければ既定）
+  [...new Set(state.meds.flatMap(m=>m.timings||[]))].forEach(slot=>{ map[slot] = slotTime(slot); });
+  // 明示的に作ったリマインダーがあれば、その枠の時刻を優先
+  state.reminders.forEach(r=>{ map[r.slot] = r.time; });
+  return Object.entries(map).map(([slot,time])=>({ slot, time }));
+}
 // 服薬スケジュールをサーバーに送信
 async function postLineSchedule(){
   if(!cfg.lineUserId) return;
@@ -874,7 +884,7 @@ async function postLineSchedule(){
       body: JSON.stringify({
         userId: cfg.lineUserId,
         tzOffset: new Date().getTimezoneOffset(),
-        reminders: state.reminders.map(r=>({ time:r.time, slot:r.slot }))
+        reminders: lineReminders()
       })
     });
     return res.ok;
@@ -1224,7 +1234,7 @@ function importScanned(){
     state.meds.push({ id:uid(), name:m.name||'お薬', dose:m.dose||'', meal:['none','before','after','between'].includes(m.meal)?m.meal:'none', timings: timings.length?timings:['morning'], note:m.note||'' });
     count++;
   });
-  saveLocal(); renderMedList(); renderToday(); closeModal('scanModal');
+  saveLocal(); renderMedList(); renderToday(); closeModal('scanModal'); postLineSchedule();
   switchTab('meds');
   toast(`${count}件のお薬を登録しました`);
 }
