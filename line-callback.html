@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>LINE連携</title>
+<style>
+  body{font-family:-apple-system,"Hiragino Sans",sans-serif;text-align:center;padding:48px 20px;color:#2f7d6e;background:#f3f7f5}
+  .ok{font-size:2.4rem}
+</style>
+</head>
+<body>
+  <div class="ok">💊</div>
+  <p id="msg">LINE連携を処理しています…</p>
+  <script>
+  (function(){
+    var p = new URLSearchParams(location.search);
+    var line = p.get('line'), name = p.get('lineName') || '';
+    if(window.opener && line){
+      // ポップアップ：親ウィンドウへ通知して閉じる（メイン画面は遷移しない＝Googleログイン維持）
+      try{ window.opener.postMessage({ type:'line-linked', line:line, lineName:name }, location.origin); }catch(e){}
+      document.getElementById('msg').textContent = '連携が完了しました。この画面は自動で閉じます。';
+      setTimeout(function(){ window.close(); }, 300);
+      setTimeout(function(){ document.getElementById('msg').textContent = '連携が完了しました。この画面は閉じて構いません。'; }, 1200);
+    } else if(line){
+      // ポップアップでない場合（ブロック時の保険）：アプリへ戻す
+      location.replace('index.html?line=' + encodeURIComponent(line) + '&lineName=' + encodeURIComponent(name));
+    } else {
+      document.getElementById('msg').textContent = '連携情報を取得できませんでした。もう一度お試しください。';
+    }
+  })();
+  </script>
+</body>
+</html>

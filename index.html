@@ -905,9 +905,23 @@ function updateLineUI(){
   }
 }
 if($('#lineLinkBtn')) $('#lineLinkBtn').onclick = ()=>{
-  const ret = location.origin + location.pathname;
-  location.href = VERCEL_BASE + '/api/line/login?return=' + encodeURIComponent(ret);
+  // 連携完了ページ（同一オリジンの line-callback.html）
+  const dir = location.origin + location.pathname.replace(/[^/]*$/, '');
+  const ret = dir + 'line-callback.html';
+  const url = VERCEL_BASE + '/api/line/login?return=' + encodeURIComponent(ret);
+  // ポップアップで開く → メイン画面は遷移しないのでGoogleログインが保持される
+  const w = window.open(url, 'lineLogin', 'width=480,height=720');
+  if(!w){ location.href = url; }   // ポップアップがブロックされた場合は全画面遷移（保険）
 };
+// ポップアップ(line-callback.html)からの連携完了メッセージを受信
+window.addEventListener('message', (e)=>{
+  if(e.origin !== location.origin) return;
+  const d = e.data;
+  if(d && d.type==='line-linked' && d.line){
+    cfg.lineUserId = d.line; cfg.lineName = d.lineName || ''; saveCfg();
+    updateLineUI(); postLineSchedule(); toast('LINE連携が完了しました');
+  }
+});
 if($('#lineUnlinkBtn')) $('#lineUnlinkBtn').onclick = ()=>{
   if(!confirm('LINE連携を解除しますか？')) return;
   cfg.lineUserId=''; cfg.lineName=''; saveCfg(); updateLineUI(); toast('LINE連携を解除しました');
