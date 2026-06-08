@@ -6,7 +6,18 @@
       "Bash(node --check /tmp/mn.js)",
       "Bash(rm /tmp/mn.js)",
       "Bash(python3 *)",
-      "Bash(curl -s -o /dev/null -w \"HTTP %{http_code}  \\(%{size_download} bytes\\)\\\\n\" http://localhost:8000/index.html)"
+      "Bash(curl -s -o /dev/null -w \"HTTP %{http_code}  \\(%{size_download} bytes\\)\\\\n\" http://localhost:8000/index.html)",
+      "Bash(python3 -m http.server 8765)",
+      "Bash(curl -s -o /dev/null -w \"HTTP %{http_code}\\\\n\" http://localhost:8765/index.html)",
+      "Bash(open \"http://localhost:8765/index.html\")",
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)",
+      "Bash(git push *)",
+      "Bash(node *)",
+      "Bash(sips --version)",
+      "Bash(sips -s format png /tmp/icon_test.svg --out /tmp/icon_test.png)",
+      "Bash(gh auth *)",
+      "Bash(gh api *)"
     ]
   }
 }

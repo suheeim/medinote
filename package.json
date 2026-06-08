@@ -1,0 +1,9 @@
+{
+  "name": "medinote-line",
+  "version": "1.0.0",
+  "private": true,
+  "description": "わたしの薬ノート — LINE通知用 Vercel サーバーレス関数",
+  "dependencies": {
+    "@vercel/kv": "^1.0.1"
+  }
+}

@@ -89,14 +89,18 @@
   .slot.evening .icon{background:var(--evening)}
   .slot.bed .icon{background:var(--bed)}
   .slot-body{padding:6px 14px 12px}
-  .med-row{display:flex;align-items:center;gap:12px;padding:10px 4px;border-top:1px dashed var(--line)}
+  .med-row{display:flex;align-items:center;gap:12px;padding:10px 8px;border-top:1px dashed var(--line);border-radius:10px;transition:background .15s}
   .med-row:first-child{border-top:none}
   .med-row .info{flex:1;min-width:0}
   .med-row .info .nm{font-weight:600}
   .med-row .info .sub{font-size:.78rem;color:var(--ink-soft)}
-  .chk{width:30px;height:30px;border-radius:9px;border:2px solid var(--line);display:flex;align-items:center;justify-content:center;flex:0 0 auto;transition:.15s;background:#fff;color:transparent;font-size:1.05rem;font-weight:800}
-  .chk.on{background:var(--ok);border-color:var(--ok);color:#fff}
+  /* 服用ボタン（ピル型）：未→「飲んだ」／済→「✓ 済み」 */
+  .dose-btn{flex:0 0 auto;border:1.5px solid var(--brand);color:var(--brand);background:#fff;font-weight:800;font-size:.82rem;border-radius:999px;padding:8px 17px;white-space:nowrap;transition:.15s}
+  .dose-btn:active{transform:scale(.96)}
+  .dose-btn.on{background:var(--ok);border-color:var(--ok);color:#fff}
+  .med-row.done{background:#e9f9ef}
   .med-row.done .nm{text-decoration:line-through;color:var(--ink-soft)}
+  .med-row.done .sub{text-decoration:line-through}
   .slot.supple{border-color:#cfe3d4;background:#fbfdfb}
   .slot.supple .slot-head{background:#f1f8f3}
   .group-head{display:flex;align-items:center;gap:7px;font-weight:700;color:var(--ink-soft);font-size:.9rem;margin:6px 2px 9px}
@@ -174,6 +178,15 @@
   .stat b{font-size:1.5rem;display:block;color:var(--brand-dark)}
   .stat span{font-size:.74rem;color:var(--ink-soft)}
 
+  /* 服薬時間 超過アラート */
+  .overdue{background:linear-gradient(135deg,#fff1f0 0%,#ffe1de 100%);border:1.5px solid #f3b1ab;border-radius:14px;padding:4px 13px;margin-bottom:14px;box-shadow:0 4px 14px rgba(220,80,72,.18);animation:odpulse 1.8s ease-in-out infinite}
+  .overdue .od-row{display:flex;align-items:center;gap:10px;padding:9px 0;border-top:1px dashed #f1c2bd}
+  .overdue .od-row:first-child{border-top:none}
+  .overdue .od-msg{flex:1;font-weight:800;color:#bb392f;font-size:.92rem;line-height:1.4}
+  .overdue .od-btn{flex:0 0 auto;border:none;background:#e2453a;color:#fff;font-weight:800;border-radius:999px;padding:9px 18px;font-size:.83rem}
+  .overdue .od-btn:active{transform:scale(.96)}
+  @keyframes odpulse{0%,100%{box-shadow:0 4px 14px rgba(220,80,72,.18)}50%{box-shadow:0 5px 22px rgba(220,80,72,.42)}}
+
   /* ログイン誘導バナー */
   .login-banner{display:flex;align-items:center;gap:10px;background:linear-gradient(135deg,#fff4d6 0%,#ffe7ad 100%);border:1px solid #f0d28a;color:#7a5a12;border-radius:13px;padding:12px 14px;margin-bottom:14px;cursor:pointer;box-shadow:0 3px 12px rgba(176,137,32,.18);transition:transform .12s,box-shadow .12s}
   .login-banner:active{transform:scale(.99)}
@@ -221,6 +234,8 @@
       <div class="d" id="dateLabel">—</div>
       <button id="nextDay">›</button>
     </div>
+
+    <div id="overdueAlert" class="overdue" style="display:none"></div>
 
     <div class="card">
       <div class="today-hero">
@@ -328,6 +343,19 @@
       <div id="syncArea" style="display:none">
         <button class="btn sec sm" id="syncNowBtn" style="width:100%;margin-bottom:8px">☁️ 今すぐ同期</button>
         <button class="btn warn sm" id="signOutBtn" style="width:100%">ログアウト</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>LINEで通知を受け取る</h2>
+      <div id="lineDetail" class="muted">LINEと連携すると、服薬時間にLINEへ通知が届きます（アプリを閉じていてもOK）。</div>
+      <div id="lineLinkArea">
+        <button class="btn" id="lineLinkBtn" style="background:#06c755">LINEと連携する</button>
+        <div class="help">連携時にLINEログインと「友だち追加」が必要です。</div>
+      </div>
+      <div id="lineLinkedArea" style="display:none">
+        <button class="btn sec sm" id="lineTestBtn" style="width:100%;margin-bottom:8px">🔔 設定中の時刻をサーバーに送信</button>
+        <button class="btn warn sm" id="lineUnlinkBtn" style="width:100%">LINE連携を解除</button>
       </div>
     </div>
 
@@ -483,6 +511,12 @@ const SLOTS = [
   {key:'bed',     label:'寝る前', cls:'bed',     icon:'🌙'},
 ];
 const MEAL_LABEL = {none:'', before:'食前', after:'食後', between:'食間'};
+const DEFAULT_SLOT_TIME = {morning:'08:00', noon:'12:00', evening:'19:00', bed:'21:00'};
+// その枠の服用予定時刻（リマインダー設定があればその最早時刻、なければ既定）
+function slotTime(slotKey){
+  const rs = state.reminders.filter(r=>r.slot===slotKey).map(r=>r.time).sort();
+  return rs[0] || DEFAULT_SLOT_TIME[slotKey] || '08:00';
+}
 
 const LS_KEY = 'medinote_v1';
 const CFG_KEY = 'medinote_cfg_v1';
@@ -495,7 +529,8 @@ let state = {
 };
 // Google OAuth クライアントID（コードに直接埋め込み。OAuthクライアントIDは公開前提の値）
 const GOOGLE_CLIENT_ID = '891983471844-u0s3s0aumkpi4a5ufrl6djbq60m5e20n.apps.googleusercontent.com';
-let cfg = { googleId:GOOGLE_CLIENT_ID, claudeKey:'' };
+const VERCEL_BASE = 'https://project-53ect.vercel.app';   // LINE通知サーバー
+let cfg = { googleId:GOOGLE_CLIENT_ID, claudeKey:'', lineUserId:'', lineName:'' };
 
 let viewDate = new Date();       // 表示中の日付
 let editingMedId = null;
@@ -595,12 +630,12 @@ function renderToday(){
           const sub = [MEAL_LABEL[m.meal], m.dose].filter(Boolean).join(' ・ ');
           return `<div class="med-row ${isDone?'done':''}" data-mid="${m.id}" data-slot="${s.key}">
             <div class="info"><div class="nm">${esc(m.name)}</div>${sub?`<div class="sub">${esc(sub)}</div>`:''}</div>
-            <div class="chk ${isDone?'on':''}">✓</div>
+            <button class="dose-btn ${isDone?'on':''}">${isDone?'✓ 済み':'飲んだ'}</button>
           </div>`;
         }).join('')}
       </div>
       <div class="slot-foot">
-        <button class="btn-all ${allDone?'done':''}" data-allslot="${s.key}" data-kind="${kind}">${allDone?'✓ すべて完了済み':'まとめて完了にする'}</button>
+        <button class="btn-all ${allDone?'done':''}" data-allslot="${s.key}" data-kind="${kind}">${allDone?'✓ すべて済み':'まとめて飲んだ'}</button>
       </div>`;
     wrap.appendChild(el);
   }
@@ -640,6 +675,41 @@ function renderToday(){
   wrap.querySelectorAll('[data-allslot]').forEach(b=>{
     b.onclick = ()=> completeSlot(ds, b.dataset.allslot, b.dataset.kind);
   });
+
+  renderOverdue(ds);
+}
+
+// 今日表示中のみ：服用時刻を過ぎて未チェックの枠を返す
+function overdueSlots(ds){
+  const out = [];
+  if(!isSameDay(viewDate, new Date())) return out;
+  const log = getLog(ds);
+  const now = new Date();
+  const hm = String(now.getHours()).padStart(2,'0')+':'+String(now.getMinutes()).padStart(2,'0');
+  SLOTS.forEach(s=>{
+    if(slotTime(s.key) > hm) return;                 // まだ服用時刻前
+    const meds = medsForSlot(s.key);
+    if(meds.length && meds.some(m=>!log[s.key].includes(m.id))) out.push(s);
+  });
+  return out;
+}
+function renderOverdue(ds){
+  const el = $('#overdueAlert'); if(!el) return;
+  const slots = overdueSlots(ds);
+  if(!slots.length){ el.style.display='none'; el.innerHTML=''; return; }
+  el.style.display='block';
+  el.innerHTML = slots.map(s=>`
+    <div class="od-row">
+      <div class="od-msg">${s.icon} ${s.label}の薬がまだです！飲みましたか？</div>
+      <button class="od-btn" data-odslot="${s.key}">飲んだ</button>
+    </div>`).join('');
+  el.querySelectorAll('[data-odslot]').forEach(b=> b.onclick=()=> markSlotTaken(ds, b.dataset.odslot));
+}
+function markSlotTaken(ds, slot){
+  const log = getLog(ds);
+  medsForSlot(slot).forEach(m=>{ if(!log[slot].includes(m.id)) log[slot].push(m.id); });
+  saveLocal(); renderToday();
+  toast(`${SLOTS.find(s=>s.key===slot).label}を服用済みにしました`);
 }
 function toggleDose(ds, slot, mid){
   const log = getLog(ds);
@@ -777,6 +847,66 @@ function notifDiag(){
 }
 window.notifDiag = notifDiag;   // Consoleから notifDiag() で確認可能
 
+/* ============================================================
+   LINE通知（Vercel中継サーバー）
+   ============================================================ */
+// 連携後にLINEから戻ってきた ?line=... を処理
+function handleLineRedirect(){
+  const p = new URLSearchParams(location.search);
+  const id = p.get('line');
+  if(!id) return;
+  cfg.lineUserId = id;
+  cfg.lineName = p.get('lineName') || '';
+  saveCfg();
+  // URLからパラメータを除去
+  p.delete('line'); p.delete('lineName');
+  const clean = location.pathname + (p.toString()?('?'+p.toString()):'') + location.hash;
+  history.replaceState(null, '', clean);
+  toast('LINE連携が完了しました');
+  postLineSchedule();
+}
+// 服薬スケジュールをサーバーに送信
+async function postLineSchedule(){
+  if(!cfg.lineUserId) return;
+  try{
+    const res = await fetch(VERCEL_BASE + '/api/schedule', {
+      method:'POST', headers:{'content-type':'application/json'},
+      body: JSON.stringify({
+        userId: cfg.lineUserId,
+        tzOffset: new Date().getTimezoneOffset(),
+        reminders: state.reminders.map(r=>({ time:r.time, slot:r.slot }))
+      })
+    });
+    return res.ok;
+  }catch(_){ return false; }
+}
+function updateLineUI(){
+  const linked = !!cfg.lineUserId;
+  const d = $('#lineDetail'); const la = $('#lineLinkArea'); const lk = $('#lineLinkedArea');
+  if(!d) return;
+  if(linked){
+    d.innerHTML = `✅ <b>LINE連携済み</b>${cfg.lineName?'（'+esc(cfg.lineName)+'）':''}<br><span class="muted">服薬時間にLINEへ通知が届きます。</span>`;
+    if(la) la.style.display='none';
+    if(lk) lk.style.display='block';
+  }else{
+    d.textContent = 'LINEと連携すると、服薬時間にLINEへ通知が届きます（アプリを閉じていてもOK）。';
+    if(la) la.style.display='block';
+    if(lk) lk.style.display='none';
+  }
+}
+if($('#lineLinkBtn')) $('#lineLinkBtn').onclick = ()=>{
+  const ret = location.origin + location.pathname;
+  location.href = VERCEL_BASE + '/api/line/login?return=' + encodeURIComponent(ret);
+};
+if($('#lineUnlinkBtn')) $('#lineUnlinkBtn').onclick = ()=>{
+  if(!confirm('LINE連携を解除しますか？')) return;
+  cfg.lineUserId=''; cfg.lineName=''; saveCfg(); updateLineUI(); toast('LINE連携を解除しました');
+};
+if($('#lineTestBtn')) $('#lineTestBtn').onclick = async ()=>{
+  const ok = await postLineSchedule();
+  toast(ok? '現在の時刻設定を送信しました' : '送信に失敗しました');
+};
+
 // 通知許可をユーザー操作（タップ）の中で要求する（iOS必須）
 async function requestNotifPermission(){
   if(!('Notification' in window)){ toast('この端末は通知に対応していません'); return false; }
@@ -840,14 +970,14 @@ $('#saveRemindBtn').onclick = ()=>{
   const data = { time:$('#rTime').value, slot:$('#rSlot').value, methods:['browser'] };
   if(editingRemindId){ const r=state.reminders.find(x=>x.id===editingRemindId); Object.assign(r,data); }
   else{ data.id=uid(); data.lastFired=''; state.reminders.push(data); }
-  saveLocal(); renderReminders(); closeModal('remindModal'); scheduleReminders();
+  saveLocal(); renderReminders(); closeModal('remindModal'); scheduleReminders(); postLineSchedule();
   if(!state.settings.notif) toast('保存しました（通知を有効にしてください）');
   else toast('保存しました');
 };
 $('#deleteRemindBtn').onclick = ()=>{
   if(!confirm('このリマインダーを削除しますか？')) return;
   state.reminders = state.reminders.filter(r=>r.id!==editingRemindId);
-  saveLocal(); renderReminders(); closeModal('remindModal'); scheduleReminders();
+  saveLocal(); renderReminders(); closeModal('remindModal'); scheduleReminders(); postLineSchedule();
 };
 $('#closeRemindBtn').onclick = ()=>closeModal('remindModal');
 
@@ -884,6 +1014,9 @@ function fireReminder(r){
   }
 }
 setInterval(checkReminders, 30000);
+// アプリ復帰時・毎分、超過アラートを更新（今日表示中のみ）
+document.addEventListener('visibilitychange', ()=>{ if(!document.hidden && $('#view-today').classList.contains('active')) renderToday(); });
+setInterval(()=>{ if(!document.hidden && $('#view-today').classList.contains('active')) renderOverdue(fmtDate(viewDate)); }, 60000);
 
 /* 定刻通知の予約（Notification Triggers 対応ブラウザのみ・バックグラウンド可）
    ※ iOS Safari は Triggers 非対応のため、アプリを開いている間のみ通知します。
@@ -1243,6 +1376,11 @@ function init(){
   updateAcctUI();
   renderAll();
   if($('#headerSignBtn')) $('#headerSignBtn').onclick = googleSignIn;
+
+  // LINE連携：戻りパラメータ処理＋UI反映＋スケジュール再送
+  handleLineRedirect();
+  updateLineUI();
+  if(cfg.lineUserId) postLineSchedule();
 
   // Google SDK 読み込み
   if(cfg.googleId){

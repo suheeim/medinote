@@ -4,7 +4,7 @@
    - プッシュ通知（push）の受信（要・プッシュ配信サーバー）
    - 定刻通知（Notification Triggers / 対応ブラウザのみ）
 */
-const CACHE = 'medinote-v2';
+const CACHE = 'medinote-v3';
 const ASSETS = [
   './',
   './index.html',
