@@ -174,6 +174,15 @@
   .stat b{font-size:1.5rem;display:block;color:var(--brand-dark)}
   .stat span{font-size:.74rem;color:var(--ink-soft)}
 
+  /* 服用時間超過アラート */
+  .overdue{background:linear-gradient(135deg,#e2453a 0%,#c8362c 100%);color:#fff;border-radius:14px;padding:14px 16px;margin-bottom:14px;box-shadow:0 6px 18px rgba(200,54,44,.32);cursor:pointer;animation:odpulse 1.6s ease-in-out infinite}
+  .overdue .od-head{display:flex;align-items:center;gap:8px;font-weight:800;font-size:1.02rem}
+  .overdue .od-list{margin-top:7px;font-size:.86rem;line-height:1.7;opacity:.97}
+  .overdue .od-item{display:flex;gap:6px;align-items:baseline}
+  .overdue .od-time{font-weight:700;background:rgba(255,255,255,.22);border-radius:6px;padding:1px 7px;font-size:.78rem;flex:0 0 auto}
+  .overdue .od-foot{margin-top:9px;font-size:.78rem;opacity:.9}
+  @keyframes odpulse{0%,100%{box-shadow:0 6px 18px rgba(200,54,44,.32)}50%{box-shadow:0 6px 26px rgba(200,54,44,.55)}}
+
   .toast{position:fixed;bottom:90px;left:50%;transform:translateX(-50%);background:var(--ink);color:#fff;padding:11px 18px;border-radius:999px;font-size:.85rem;font-weight:600;z-index:100;opacity:0;transition:.3s;pointer-events:none;box-shadow:0 4px 16px rgba(0,0,0,.2)}
   .toast.show{opacity:1;transform:translateX(-50%) translateY(-4px)}
 
@@ -206,6 +215,8 @@
       <div class="d" id="dateLabel">—</div>
       <button id="nextDay">›</button>
     </div>
+
+    <div id="overdueAlert" class="overdue" style="display:none" onclick="document.getElementById('slots').scrollIntoView({behavior:'smooth'})"></div>
 
     <div class="card">
       <div class="today-hero">
@@ -468,6 +479,12 @@ const SLOTS = [
   {key:'bed',     label:'寝る前', cls:'bed',     icon:'🌙'},
 ];
 const MEAL_LABEL = {none:'', before:'食前', after:'食後', between:'食間'};
+const DEFAULT_SLOT_TIME = {morning:'08:00', noon:'12:00', evening:'19:00', bed:'21:00'};
+// その枠の服用予定時刻（リマインダー設定があればその最早時刻、なければ既定）
+function slotTime(slotKey){
+  const rs = state.reminders.filter(r=>r.slot===slotKey).map(r=>r.time).sort();
+  return rs[0] || DEFAULT_SLOT_TIME[slotKey] || '08:00';
+}
 
 const LS_KEY = 'medinote_v1';
 const CFG_KEY = 'medinote_cfg_v1';
@@ -625,6 +642,37 @@ function renderToday(){
   wrap.querySelectorAll('[data-allslot]').forEach(b=>{
     b.onclick = ()=> completeSlot(ds, b.dataset.allslot, b.dataset.kind);
   });
+
+  renderOverdue(ds);
+}
+
+// 今日表示中のみ：服用時刻を過ぎた未服用のお薬を目立つアラートで表示
+function getOverdue(ds){
+  const out = [];
+  if(!isSameDay(viewDate, new Date())) return out;
+  const log = getLog(ds);
+  const now = new Date();
+  const hm = String(now.getHours()).padStart(2,'0')+':'+String(now.getMinutes()).padStart(2,'0');
+  SLOTS.forEach(s=>{
+    const t = slotTime(s.key);
+    if(t > hm) return;   // まだ服用時刻前
+    medsForSlot(s.key).forEach(m=>{
+      if(!log[s.key].includes(m.id)) out.push({ slot:s, time:t, med:m });
+    });
+  });
+  return out.sort((a,b)=> a.time.localeCompare(b.time));
+}
+function renderOverdue(ds){
+  const el = $('#overdueAlert'); if(!el) return;
+  const list = getOverdue(ds);
+  if(!list.length){ el.style.display='none'; el.innerHTML=''; return; }
+  el.style.display='block';
+  el.innerHTML = `
+    <div class="od-head"><span style="font-size:1.2rem">⏰</span>服用時間を過ぎたお薬が ${list.length}件あります</div>
+    <div class="od-list">
+      ${list.map(o=>`<div class="od-item"><span class="od-time">${o.time}</span><span>${o.slot.label}・${esc(o.med.name)}</span></div>`).join('')}
+    </div>
+    <div class="od-foot">タップして服用チェックへ ▼</div>`;
 }
 function toggleDose(ds, slot, mid){
   const log = getLog(ds);
@@ -869,6 +917,9 @@ function fireReminder(r){
   }
 }
 setInterval(checkReminders, 30000);
+// アプリに戻ってきた時／一定時間ごとに、超過アラートを更新
+document.addEventListener('visibilitychange', ()=>{ if(!document.hidden && $('#view-today').classList.contains('active')) renderToday(); });
+setInterval(()=>{ if(!document.hidden && $('#view-today').classList.contains('active')) renderOverdue(fmtDate(viewDate)); }, 60000);
 
 /* 定刻通知の予約（Notification Triggers 対応ブラウザのみ・バックグラウンド可）
    ※ iOS Safari は Triggers 非対応のため、アプリを開いている間のみ通知します。
