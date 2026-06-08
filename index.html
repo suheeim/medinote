@@ -92,6 +92,10 @@
   .chk{width:30px;height:30px;border-radius:9px;border:2px solid var(--line);display:flex;align-items:center;justify-content:center;flex:0 0 auto;transition:.15s;background:#fff;color:transparent;font-size:1.05rem;font-weight:800}
   .chk.on{background:var(--ok);border-color:var(--ok);color:#fff}
   .med-row.done .nm{text-decoration:line-through;color:var(--ink-soft)}
+  .slot.supple{border-color:#cfe3d4;background:#fbfdfb}
+  .slot.supple .slot-head{background:#f1f8f3}
+  .group-head{display:flex;align-items:center;gap:7px;font-weight:700;color:var(--ink-soft);font-size:.9rem;margin:6px 2px 9px}
+  .group-head.supple{margin-top:18px}
   .slot-foot{padding:0 14px 12px}
   .btn-all{width:100%;background:var(--brand-soft);color:var(--brand-dark);font-weight:700;border-radius:11px;padding:11px;border:1px solid #cfe6df}
   .btn-all.done{background:#eef2f1;color:var(--ink-soft);border-color:var(--line)}
@@ -106,17 +110,21 @@
   /* Forms */
   .field{margin-bottom:13px}
   .field label{display:block;font-size:.82rem;font-weight:600;color:var(--ink-soft);margin-bottom:5px}
-  .field input,.field select,.field textarea{width:100%;padding:11px 12px;border:1.5px solid var(--line);border-radius:11px;background:#fff;outline:none}
+  .field input,.field select,.field textarea{width:100%;min-width:0;padding:11px 12px;border:1.5px solid var(--line);border-radius:11px;background:#fff;outline:none;font-family:inherit;font-size:1rem;color:inherit;-webkit-appearance:none;appearance:none}
+  .field input,.field select{height:46px}
+  .field textarea{height:auto}
+  .field select{padding-right:34px;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath fill='none' stroke='%237a8a86' stroke-width='1.8' d='M1 1.5 6 6.5 11 1.5'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 13px center}
   .field input:focus,.field select:focus,.field textarea:focus{border-color:var(--brand)}
   .chips{display:flex;flex-wrap:wrap;gap:8px}
   .chip{padding:8px 13px;border-radius:999px;border:1.5px solid var(--line);background:#fff;font-size:.86rem;font-weight:600;color:var(--ink-soft)}
   .chip.on{background:var(--brand);border-color:var(--brand);color:#fff}
   .row2{display:flex;gap:10px}
-  .row2>*{flex:1}
+  .row2>*{flex:1;min-width:0}
 
   /* Med list (settings) */
   .med-card{display:flex;gap:12px;align-items:flex-start;padding:14px;border:1px solid var(--line);border-radius:14px;margin-bottom:11px;background:#fff}
   .med-card .badge{width:42px;height:42px;border-radius:11px;background:var(--brand-soft);color:var(--brand-dark);display:flex;align-items:center;justify-content:center;font-size:1.25rem;flex:0 0 auto}
+  .med-card .badge.supple{background:#e9f6ec;color:#2e7d4f}
   .med-card .body{flex:1;min-width:0}
   .med-card .body .nm{font-weight:700}
   .med-card .body .meta{font-size:.8rem;color:var(--ink-soft);margin-top:2px}
@@ -249,7 +257,7 @@
     <div id="remindList"></div>
     <div class="banner" style="margin-top:6px">
       <span>ℹ️</span>
-      <div>ブラウザ通知はこのページを開いている間に動作します。LINE通知を使う場合は「アカウント」画面でWebhook URLを設定してください（中継サーバーが必要です）。</div>
+      <div>ブラウザ通知はこのページを開いている間に動作します。</div>
     </div>
   </section>
 
@@ -313,16 +321,6 @@
     </div>
 
     <div class="card">
-      <h2>LINE通知（任意）</h2>
-      <div class="field">
-        <label>通知中継 Webhook URL</label>
-        <input id="cfgLineHook" placeholder="https://...">
-        <div class="help">LINE Messaging API へ中継するサーバーのURL。設定するとリマインダー時にPOSTします。</div>
-      </div>
-      <button class="btn sec sm" id="saveLineHook">保存</button>
-    </div>
-
-    <div class="card">
       <h2>データ</h2>
       <button class="btn sec sm" id="exportBtn" style="width:100%;margin-bottom:8px">⬇️ データを書き出し（JSON）</button>
       <button class="btn warn sm" id="resetBtn" style="width:100%">すべてのデータを削除</button>
@@ -345,7 +343,14 @@
     <div class="grab"></div>
     <h2 id="medModalTitle">お薬を追加</h2>
     <div class="field">
-      <label>お薬の名前</label>
+      <label>種類</label>
+      <div class="chips" id="mKind">
+        <div class="chip on" data-k="med">💊 お薬</div>
+        <div class="chip" data-k="supple">🌿 サプリメント</div>
+      </div>
+    </div>
+    <div class="field">
+      <label>名前</label>
       <input id="mName" placeholder="例）アムロジピン錠 5mg">
     </div>
     <div class="row2">
@@ -386,7 +391,7 @@
 <div class="modal" id="remindModal">
   <div class="sheet">
     <div class="grab"></div>
-    <h2 id="remindModalTitle">リマインダーを追加</h2>
+    <h2 id="remindModalTitle">リマインダー</h2>
     <div class="row2">
       <div class="field"><label>時刻</label><input id="rTime" type="time" value="08:00"></div>
       <div class="field"><label>タイミング</label>
@@ -396,13 +401,6 @@
           <option value="evening">夜</option>
           <option value="bed">寝る前</option>
         </select>
-      </div>
-    </div>
-    <div class="field">
-      <label>通知方法</label>
-      <div class="chips" id="rMethods">
-        <div class="chip on" data-m="browser">ブラウザ通知</div>
-        <div class="chip" data-m="line">LINE</div>
       </div>
     </div>
     <button class="btn" id="saveRemindBtn">保存する</button>
@@ -466,7 +464,7 @@ let state = {
 };
 // Google OAuth クライアントID（コードに直接埋め込み。OAuthクライアントIDは公開前提の値）
 const GOOGLE_CLIENT_ID = '891983471844-u0s3s0aumkpi4a5ufrl6djbq60m5e20n.apps.googleusercontent.com';
-let cfg = { googleId:GOOGLE_CLIENT_ID, claudeKey:'', lineHook:'' };
+let cfg = { googleId:GOOGLE_CLIENT_ID, claudeKey:'' };
 
 let viewDate = new Date();       // 表示中の日付
 let editingMedId = null;
@@ -528,7 +526,8 @@ function getLog(dateStr){
   SLOTS.forEach(s=>{ if(!state.logs[dateStr][s.key]) state.logs[dateStr][s.key]=[]; });
   return state.logs[dateStr];
 }
-function medsForSlot(slotKey){ return state.meds.filter(m=>m.timings.includes(slotKey)); }
+function medKind(m){ return m.kind==='supple' ? 'supple' : 'med'; }
+function medsForSlot(slotKey, kind){ return state.meds.filter(m=> m.timings.includes(slotKey) && (!kind || medKind(m)===kind)); }
 
 function renderToday(){
   const ds = fmtDate(viewDate);
@@ -544,8 +543,7 @@ function renderToday(){
   const wrap = $('#slots'); wrap.innerHTML='';
   let total=0, done=0;
 
-  SLOTS.forEach(s=>{
-    const meds = medsForSlot(s.key);
+  function buildSlot(s, meds, kind){
     if(meds.length===0) return;
     total += meds.length;
     const doneCount = meds.filter(m=>log[s.key].includes(m.id)).length;
@@ -553,7 +551,7 @@ function renderToday(){
     const allDone = doneCount===meds.length;
 
     const el = document.createElement('div');
-    el.className = 'slot '+s.cls;
+    el.className = 'slot '+s.cls+(kind==='supple'?' supple':'');
     el.innerHTML = `
       <div class="slot-head">
         <div class="icon">${s.icon}</div>
@@ -571,10 +569,27 @@ function renderToday(){
         }).join('')}
       </div>
       <div class="slot-foot">
-        <button class="btn-all ${allDone?'done':''}" data-allslot="${s.key}">${allDone?'✓ すべて完了済み':'まとめて完了にする'}</button>
+        <button class="btn-all ${allDone?'done':''}" data-allslot="${s.key}" data-kind="${kind}">${allDone?'✓ すべて完了済み':'まとめて完了にする'}</button>
       </div>`;
     wrap.appendChild(el);
-  });
+  }
+
+  const medSlots    = SLOTS.filter(s=> medsForSlot(s.key,'med').length>0);
+  const suppleSlots = SLOTS.filter(s=> medsForSlot(s.key,'supple').length>0);
+
+  // お薬（上）
+  if(medSlots.length && suppleSlots.length){
+    const hd = document.createElement('div'); hd.className='group-head';
+    hd.innerHTML = `<span>💊</span> お薬`; wrap.appendChild(hd);
+  }
+  medSlots.forEach(s=> buildSlot(s, medsForSlot(s.key,'med'), 'med'));
+
+  // サプリメント（下・別枠）
+  if(suppleSlots.length){
+    const hd = document.createElement('div'); hd.className='group-head supple';
+    hd.innerHTML = `<span>🌿</span> サプリメント`; wrap.appendChild(hd);
+    suppleSlots.forEach(s=> buildSlot(s, medsForSlot(s.key,'supple'), 'supple'));
+  }
 
   if(total===0){
     wrap.innerHTML = `<div class="card empty"><div class="big">💊</div><div>この日に予定されたお薬はありません</div>
@@ -592,7 +607,7 @@ function renderToday(){
     r.onclick = ()=> toggleDose(ds, r.dataset.slot, r.dataset.mid);
   });
   wrap.querySelectorAll('[data-allslot]').forEach(b=>{
-    b.onclick = ()=> completeSlot(ds, b.dataset.allslot);
+    b.onclick = ()=> completeSlot(ds, b.dataset.allslot, b.dataset.kind);
   });
 }
 function toggleDose(ds, slot, mid){
@@ -602,11 +617,12 @@ function toggleDose(ds, slot, mid){
   if(i>=0) arr.splice(i,1); else arr.push(mid);
   saveLocal(); renderToday();
 }
-function completeSlot(ds, slot){
+function completeSlot(ds, slot, kind){
   const log = getLog(ds);
-  const meds = medsForSlot(slot).map(m=>m.id);
-  const allDone = meds.every(id=>log[slot].includes(id));
-  log[slot] = allDone? [] : meds.slice();
+  const ids = medsForSlot(slot, kind).map(m=>m.id);
+  const allDone = ids.every(id=>log[slot].includes(id));
+  if(allDone){ log[slot] = log[slot].filter(id=> !ids.includes(id)); }
+  else { ids.forEach(id=>{ if(!log[slot].includes(id)) log[slot].push(id); }); }
   saveLocal(); renderToday();
   toast(allDone? 'チェックを外しました' : `${SLOTS.find(s=>s.key===slot).label}を完了にしました`);
 }
@@ -623,12 +639,14 @@ function renderMedList(){
       <div class="muted" style="margin-top:6px">「＋追加」または「写真から読み取る」で登録できます</div></div>`;
     return;
   }
-  state.meds.forEach(m=>{
+  const sorted = [...state.meds].sort((a,b)=> (medKind(a)==='supple'?1:0) - (medKind(b)==='supple'?1:0));
+  sorted.forEach(m=>{
+    const supple = medKind(m)==='supple';
     const times = m.timings.map(t=>SLOTS.find(s=>s.key===t)?.label).filter(Boolean);
     const card = document.createElement('div');
     card.className='med-card';
     card.innerHTML = `
-      <div class="badge">💊</div>
+      <div class="badge${supple?' supple':''}">${supple?'🌿':'💊'}</div>
       <div class="body">
         <div class="nm">${esc(m.name)}</div>
         <div class="meta">${[MEAL_LABEL[m.meal], m.dose].filter(Boolean).join(' ・ ')||'　'}</div>
@@ -644,24 +662,28 @@ function renderMedList(){
 /* お薬モーダル */
 function openMedModal(id, prefill){
   editingMedId = id||null;
-  const m = id? state.meds.find(x=>x.id===id) : (prefill||{name:'',dose:'',meal:'none',timings:[],note:''});
-  $('#medModalTitle').textContent = id? 'お薬を編集' : 'お薬を追加';
+  const m = id? state.meds.find(x=>x.id===id) : (prefill||{name:'',dose:'',meal:'none',timings:[],note:'',kind:'med'});
+  const kind = medKind(m);
+  $('#medModalTitle').textContent = id? (kind==='supple'?'サプリメントを編集':'お薬を編集') : 'お薬・サプリを追加';
   $('#mName').value = m.name||'';
   $('#mDose').value = m.dose||'';
   $('#mMeal').value = m.meal||'none';
   $('#mNote').value = m.note||'';
+  $$('#mKind .chip').forEach(c=> c.classList.toggle('on', c.dataset.k===kind));
   $$('#mTimings .chip').forEach(c=> c.classList.toggle('on', (m.timings||[]).includes(c.dataset.t)));
   $('#deleteMedBtn').style.display = id? 'block':'none';
   openModal('medModal');
 }
 $('#addMedBtn').onclick = ()=>openMedModal(null);
+$$('#mKind .chip').forEach(c=> c.onclick=()=> $$('#mKind .chip').forEach(x=>x.classList.toggle('on', x===c)));
 $$('#mTimings .chip').forEach(c=> c.onclick=()=>c.classList.toggle('on'));
 $('#saveMedBtn').onclick = ()=>{
   const name = $('#mName').value.trim();
-  if(!name){ toast('お薬の名前を入力してください'); return; }
+  if(!name){ toast('名前を入力してください'); return; }
   const timings = [...$$('#mTimings .chip.on')].map(c=>c.dataset.t);
-  if(timings.length===0){ toast('服用タイミングを選んでください'); return; }
-  const data = { name, dose:$('#mDose').value.trim(), meal:$('#mMeal').value, timings, note:$('#mNote').value.trim() };
+  if(timings.length===0){ toast('タイミングを選んでください'); return; }
+  const kind = ($('#mKind .chip.on')?.dataset.k)==='supple' ? 'supple' : 'med';
+  const data = { name, kind, dose:$('#mDose').value.trim(), meal:$('#mMeal').value, timings, note:$('#mNote').value.trim() };
   if(editingMedId){ const m=state.meds.find(x=>x.id===editingMedId); Object.assign(m,data); }
   else{ data.id=uid(); state.meds.push(data); }
   saveLocal(); renderMedList(); renderToday(); closeModal('medModal');
@@ -691,14 +713,13 @@ function renderReminders(){
   }
   state.reminders.sort((a,b)=>a.time.localeCompare(b.time)).forEach(r=>{
     const slot = SLOTS.find(s=>s.key===r.slot);
-    const methods = r.methods.map(m=> m==='browser'?'通知':'LINE').join(' / ');
     const card = document.createElement('div');
     card.className='med-card';
     card.innerHTML = `
       <div class="badge">${slot?slot.icon:'⏰'}</div>
       <div class="body">
         <div class="nm" style="font-size:1.3rem">${r.time}</div>
-        <div class="meta">${slot?slot.label:''} ・ ${methods}</div>
+        <div class="meta">${slot?slot.label:''} ・ 通知</div>
       </div>
       <button class="icon-btn" data-redit="${r.id}">✏️</button>`;
     wrap.appendChild(card);
@@ -719,24 +740,20 @@ $('#snoozeToggle').onclick = ()=>{ state.settings.snooze=!state.settings.snooze;
 
 function openRemindModal(id){
   editingRemindId = id||null;
-  const r = id? state.reminders.find(x=>x.id===id) : {time:'08:00',slot:'morning',methods:['browser']};
-  $('#remindModalTitle').textContent = id?'リマインダーを編集':'リマインダーを追加';
+  const r = id? state.reminders.find(x=>x.id===id) : {time:'08:00',slot:'morning'};
+  $('#remindModalTitle').textContent = 'リマインダー';
   $('#rTime').value = r.time;
   $('#rSlot').value = r.slot;
-  $$('#rMethods .chip').forEach(c=> c.classList.toggle('on', r.methods.includes(c.dataset.m)));
   $('#deleteRemindBtn').style.display = id?'block':'none';
   openModal('remindModal');
 }
 $('#addRemindBtn').onclick = ()=>openRemindModal(null);
-$$('#rMethods .chip').forEach(c=> c.onclick=()=>c.classList.toggle('on'));
 $('#saveRemindBtn').onclick = ()=>{
-  const methods = [...$$('#rMethods .chip.on')].map(c=>c.dataset.m);
-  if(methods.length===0){ toast('通知方法を選んでください'); return; }
-  const data = { time:$('#rTime').value, slot:$('#rSlot').value, methods };
+  const data = { time:$('#rTime').value, slot:$('#rSlot').value, methods:['browser'] };
   if(editingRemindId){ const r=state.reminders.find(x=>x.id===editingRemindId); Object.assign(r,data); }
   else{ data.id=uid(); data.lastFired=''; state.reminders.push(data); }
   saveLocal(); renderReminders(); closeModal('remindModal');
-  if(!state.settings.notif && methods.includes('browser')) toast('保存しました（通知を有効にしてください）');
+  if(!state.settings.notif) toast('保存しました（通知を有効にしてください）');
   else toast('保存しました');
 };
 $('#deleteRemindBtn').onclick = ()=>{
@@ -764,7 +781,7 @@ function fireReminder(r){
   const slot = SLOTS.find(s=>s.key===r.slot);
   const pending = medsForSlot(r.slot).filter(m=>!getLog(fmtDate(new Date()))[r.slot].includes(m.id));
   const body = pending.length? `${slot.label}のお薬 ${pending.length}件：${pending.map(m=>m.name).join('、')}` : `${slot.label}のお薬の時間です`;
-  if(r.methods.includes('browser') && 'Notification' in window && Notification.permission==='granted'){
+  if('Notification' in window && Notification.permission==='granted'){
     const n = new Notification('💊 わたしの薬ノート — お薬の時間です', {body, tag:r.id});
     n.onclick = ()=>{ window.focus(); switchTab('today'); };
     // 再通知
@@ -776,9 +793,6 @@ function fireReminder(r){
         }
       }, state.settings.snoozeMin*60*1000);
     }
-  }
-  if(r.methods.includes('line') && cfg.lineHook){
-    fetch(cfg.lineHook,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({message:'💊 わたしの薬ノート: '+body})}).catch(()=>{});
   }
 }
 setInterval(checkReminders, 30000);
@@ -1073,7 +1087,6 @@ $('#signOutBtn').onclick = googleSignOut;
 $('#syncNowBtn').onclick = async ()=>{ if(!accessToken){toast('ログインしてください');return;} await cloudSave(); toast('同期しました'); };
 $('#saveGoogleId').onclick = ()=>{ cfg.googleId=$('#cfgGoogleId').value.trim(); saveCfg(); initGoogleAuth(); toast('保存しました'); };
 $('#saveClaudeKey').onclick = ()=>{ cfg.claudeKey=$('#cfgClaudeKey').value.trim(); saveCfg(); toast('保存しました'); };
-$('#saveLineHook').onclick = ()=>{ cfg.lineHook=$('#cfgLineHook').value.trim(); saveCfg(); toast('保存しました'); };
 $('#exportBtn').onclick = ()=>{
   const blob = new Blob([JSON.stringify(state,null,2)],{type:'application/json'});
   const a = document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='medinote_backup.json'; a.click();
@@ -1102,7 +1115,6 @@ function init(){
   // 設定欄反映
   $('#cfgGoogleId').value = cfg.googleId;
   $('#cfgClaudeKey').value = cfg.claudeKey;
-  $('#cfgLineHook').value = cfg.lineHook;
   updateAcctUI();
   renderAll();
   if($('#headerSignBtn')) $('#headerSignBtn').onclick = googleSignIn;
