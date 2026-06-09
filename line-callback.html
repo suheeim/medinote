@@ -44,7 +44,6 @@
   </div>
   <script>
   (function(){
-    var APP_URL = 'https://suheeim.github.io/medinote/';
     var p = new URLSearchParams(location.search);
     var line = p.get('line'), name = p.get('lineName') || '';
     var titleEl = document.getElementById('title');
@@ -73,10 +72,10 @@
       hintEl.classList.remove('hidden');
     }
 
-    // 「アプリに戻る」：①MediNoteを開き ②このSafariタブを閉じる
+    // 「アプリに戻る」：このSafariタブを閉じるだけ。
+    // PWA側はポーリングで連携完了を検知済みのため、タブを閉じればアプリに戻れる。
     backBtn.addEventListener('click', function(){
-      try{ window.open(APP_URL, '_blank'); }catch(e){}
-      setTimeout(function(){ try{ window.close(); }catch(e){} }, 150);
+      try{ window.close(); }catch(e){}
     });
   })();
   </script>
