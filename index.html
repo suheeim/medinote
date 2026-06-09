@@ -354,29 +354,8 @@
         <div class="help">連携時にLINEログインと「友だち追加」が必要です。</div>
       </div>
       <div id="lineLinkedArea" style="display:none">
-        <button class="btn sec sm" id="lineTestBtn" style="width:100%;margin-bottom:8px">🔔 設定中の時刻をサーバーに送信</button>
         <button class="btn warn sm" id="lineUnlinkBtn" style="width:100%">LINE連携を解除</button>
       </div>
-    </div>
-
-    <div class="card">
-      <h2>Google クライアントID</h2>
-      <div class="field">
-        <label>OAuth クライアントID</label>
-        <input id="cfgGoogleId" placeholder="xxxxx.apps.googleusercontent.com">
-        <div class="help">Google Cloud Console で取得したクライアントID。承認済みのJavaScript生成元にこのページのURLを登録してください。</div>
-      </div>
-      <button class="btn sec sm" id="saveGoogleId">保存</button>
-    </div>
-
-    <div class="card">
-      <h2>Claude API（写真読み取り用）</h2>
-      <div class="field">
-        <label>Anthropic APIキー</label>
-        <input id="cfgClaudeKey" type="password" placeholder="sk-ant-...">
-        <div class="help">写真からお薬情報を読み取る際に使用します。キーはこの端末にのみ保存されます。</div>
-      </div>
-      <button class="btn sec sm" id="saveClaudeKey">保存</button>
     </div>
 
     <div class="card">
@@ -955,11 +934,6 @@ if($('#lineUnlinkBtn')) $('#lineUnlinkBtn').onclick = ()=>{
   if(!confirm('LINE連携を解除しますか？')) return;
   cfg.lineUserId=''; cfg.lineName=''; saveCfg(); updateLineUI(); toast('LINE連携を解除しました');
 };
-if($('#lineTestBtn')) $('#lineTestBtn').onclick = async ()=>{
-  const ok = await postLineSchedule();
-  toast(ok? '現在の時刻設定を送信しました' : '送信に失敗しました');
-};
-
 // 通知許可をユーザー操作（タップ）の中で要求する（iOS必須）
 async function requestNotifPermission(){
   if(!('Notification' in window)){ toast('この端末は通知に対応していません'); return false; }
@@ -1186,7 +1160,6 @@ $('#scanFileAlbum').onchange  = handleScanFile;
 
 $('#runScanBtn').onclick = async ()=>{
   if(!scanImage) return;
-  if(!cfg.claudeKey){ toast('設定画面でClaude APIキーを登録してください'); switchTab('account'); closeModal('scanModal'); return; }
   const btn = $('#runScanBtn');
   btn.disabled=true; btn.innerHTML='<span class="spinner"></span> 読み取り中…';
   try{
@@ -1216,28 +1189,14 @@ async function callClaudeVision(img, mode='photo'){
     },
     required:['medications'], additionalProperties:false
   };
-  const body = {
-    model:'claude-opus-4-8',
-    max_tokens:1500,
-    messages:[{ role:'user', content:[
-      { type:'image', source:{ type:'base64', media_type:img.mediaType, data:img.b64 } },
-      { type:'text', text:promptText }
-    ]}],
-    output_config:{ format:{ type:'json_schema', schema } }
-  };
-  const res = await fetch('https://api.anthropic.com/v1/messages',{
+  const res = await fetch(VERCEL_BASE + '/api/analyze',{
     method:'POST',
-    headers:{
-      'content-type':'application/json',
-      'x-api-key':cfg.claudeKey,
-      'anthropic-version':'2023-06-01',
-      'anthropic-dangerous-direct-browser-access':'true'
-    },
-    body: JSON.stringify(body)
+    headers:{ 'content-type':'application/json' },
+    body: JSON.stringify({ b64:img.b64, mediaType:img.mediaType, prompt:promptText, schema })
   });
   if(!res.ok){
     let msg = 'APIエラー ('+res.status+')';
-    try{ const e=await res.json(); if(e.error?.message) msg=e.error.message; }catch(_){}
+    try{ const e=await res.json(); if(e.error?.message||e.error) msg=e.error?.message||e.error; }catch(_){}
     throw new Error(msg);
   }
   const data = await res.json();
@@ -1422,8 +1381,6 @@ function googleSignOut(){
 $('#googleSignBtn').onclick = googleSignIn;
 $('#signOutBtn').onclick = googleSignOut;
 $('#syncNowBtn').onclick = async ()=>{ if(!accessToken){toast('ログインしてください');return;} await cloudSave(); toast('同期しました'); };
-$('#saveGoogleId').onclick = ()=>{ cfg.googleId=$('#cfgGoogleId').value.trim(); saveCfg(); initGoogleAuth(); toast('保存しました'); };
-$('#saveClaudeKey').onclick = ()=>{ cfg.claudeKey=$('#cfgClaudeKey').value.trim(); saveCfg(); toast('保存しました'); };
 $('#exportBtn').onclick = ()=>{
   const blob = new Blob([JSON.stringify(state,null,2)],{type:'application/json'});
   const a = document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='medinote_backup.json'; a.click();
@@ -1450,9 +1407,6 @@ function renderAll(){ renderToday(); renderMedList(); renderReminders(); }
 function init(){
   loadLocal();
   restoreGTok();   // 保存済みGoogleトークンを復元（PWA再起動・画面遷移でもログイン維持）
-  // 設定欄反映
-  $('#cfgGoogleId').value = cfg.googleId;
-  $('#cfgClaudeKey').value = cfg.claudeKey;
   updateAcctUI();
   renderAll();
   if($('#headerSignBtn')) $('#headerSignBtn').onclick = googleSignIn;
