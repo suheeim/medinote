@@ -72,10 +72,10 @@
       hintEl.classList.remove('hidden');
     }
 
-    // 「アプリに戻る」：このSafariタブを閉じるだけ。
-    // PWA側はポーリングで連携完了を検知済みのため、タブを閉じればアプリに戻れる。
+    // 「アプリに戻る」：MediNoteへ遷移する。
+    // PWA側はポーリングで連携完了を検知済みのため、遷移先で連携済みになる。
     backBtn.addEventListener('click', function(){
-      try{ window.close(); }catch(e){}
+      location.href = 'https://suheeim.github.io/medinote/';
     });
   })();
   </script>
