@@ -906,48 +906,20 @@ function updateLineUI(){
     if(lk) lk.style.display='none';
   }
 }
-let linkPollTimer = null;
-// 連携が完了したときの共通処理（postMessage／ポーリングどちらからでも呼ばれる）
-function onLineLinked(userId, name){
-  if(!userId) return;
-  cfg.lineUserId = userId; cfg.lineName = name || ''; saveCfg();
-  updateLineUI(); postLineSchedule(); toast('LINE連携が完了しました');
-  if(linkPollTimer){ clearInterval(linkPollTimer); linkPollTimer = null; }
-}
 if($('#lineLinkBtn')) $('#lineLinkBtn').onclick = ()=>{
-  // アプリ側でリンクコードを発行（サーバー経由で連携結果を受け取る＝PWAでも確実に取得できる）
-  const code = (self.crypto && crypto.randomUUID ? crypto.randomUUID() : (Math.random().toString(36).slice(2) + Date.now().toString(36))).replace(/-/g,'');
-  // 連携完了ページ（同一オリジンの line-callback.html）：通常ブラウザではpostMessageで即時通知
+  // 同一ウィンドウでLINEログインへ遷移する。
+  // ※ iOSのPWA(ホーム画面)では window.open がSafariの別タブで開いてしまい、
+  //   完了後に window.close() も効かずアプリへ戻れなかった。
+  //   Googleのアクセストークンは localStorage に保存され起動時に restoreGTok() で
+  //   復元されるため、ページ全体を遷移して戻ってもGoogleログインは維持される。
+  // callback は returnTo(=自分のindex.html) へ ?line=... を付けてリダイレクトで戻すので、
+  //   起動時の handleLineRedirect() が連携結果を取り込む。PWAスコープ内なのでSafariに出ない。
   const dir = location.origin + location.pathname.replace(/[^/]*$/, '');
-  const ret = dir + 'line-callback.html';
-  const url = VERCEL_BASE + '/api/line/login?code=' + encodeURIComponent(code) + '&return=' + encodeURIComponent(ret);
-
-  // ポップアップ（別ウィンドウ/別タブ）で開く → メイン画面は遷移しないのでGoogleログインが保持される。
-  // ※ iOSのPWA(ホーム画面)ではポップアップが別アプリ(Safari)で開きpostMessageが届かないため、
-  //   サーバーに保存したリンクコードをポーリングして連携結果を取得する。
-  window.open(url, 'lineLogin', 'width=480,height=720');
-
-  // リンクコードをポーリング（最長3分）。完了したら自動でUI更新。
-  if(linkPollTimer) clearInterval(linkPollTimer);
-  const started = Date.now();
-  toast('LINEログイン画面を開きました。完了するとこの画面に反映されます。');
-  linkPollTimer = setInterval(async ()=>{
-    if(Date.now() - started > 180000){ clearInterval(linkPollTimer); linkPollTimer = null; return; }
-    if(cfg.lineUserId){ clearInterval(linkPollTimer); linkPollTimer = null; return; }
-    try{
-      const r = await fetch(VERCEL_BASE + '/api/line/status?code=' + encodeURIComponent(code));
-      if(!r.ok) return;
-      const d = await r.json();
-      if(d.linked && d.userId) onLineLinked(d.userId, d.name);
-    }catch(_){}
-  }, 2500);
+  const ret = dir + 'index.html';
+  const url = VERCEL_BASE + '/api/line/login?return=' + encodeURIComponent(ret);
+  toast('LINEログイン画面へ移動します…');
+  location.href = url;
 };
-// ポップアップ(line-callback.html)からの連携完了メッセージを受信（通常ブラウザの即時パス）
-window.addEventListener('message', (e)=>{
-  if(e.origin !== location.origin) return;
-  const d = e.data;
-  if(d && d.type==='line-linked' && d.line){ onLineLinked(d.line, d.lineName); }
-});
 if($('#lineUnlinkBtn')) $('#lineUnlinkBtn').onclick = ()=>{
   if(!confirm('LINE連携を解除しますか？')) return;
   cfg.lineUserId=''; cfg.lineName=''; saveCfg(); updateLineUI(); toast('LINE連携を解除しました');
