@@ -14,9 +14,11 @@ export default async function handler(req, res){
     if(!code) throw new Error('認可コードがありません');
     if(!CHANNEL_SECRET) throw new Error('LINE_LOGIN_CHANNEL_SECRET が未設定です');
 
-    // state から戻り先を復元
+    // state から戻り先とリンクコードを復元
     let returnTo = 'https://suheeim.github.io/medinote/';
-    try{ returnTo = Buffer.from(String(state).split('|')[1], 'base64url').toString(); }catch(_){}
+    const stateParts = String(state).split('|');
+    try{ returnTo = Buffer.from(stateParts[1], 'base64url').toString(); }catch(_){}
+    const linkCode = (stateParts[2] || '').replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 64);
 
     // 認可コード → アクセストークン
     const tokenRes = await fetch('https://api.line.me/oauth2/v2.1/token', {
@@ -42,6 +44,13 @@ export default async function handler(req, res){
 
     // 登録
     await kv.sadd('medinote:users', prof.userId);
+
+    // リンクコードに連携結果を保存（PWAがポーリングで取得。10分で失効）
+    if(linkCode){
+      await kv.set('medinote:link:' + linkCode,
+        { userId: prof.userId, name: prof.displayName || '' },
+        { ex: 600 });
+    }
 
     const sep = returnTo.includes('?') ? '&' : '?';
     res.redirect(302, `${returnTo}${sep}line=${encodeURIComponent(prof.userId)}&lineName=${encodeURIComponent(prof.displayName||'')}`);

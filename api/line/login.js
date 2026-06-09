@@ -7,9 +7,11 @@ export default function handler(req, res){
 
   // 連携後にアプリへ戻すURL（既定は GitHub Pages）
   const returnTo = (req.query.return || 'https://suheeim.github.io/medinote/').toString();
+  // アプリが発行したリンクコード（PWAはこのコードで連携結果をポーリング取得する）
+  const linkCode = (req.query.code || '').toString().replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 64);
   const nonce = Math.random().toString(36).slice(2) + Date.now().toString(36);
-  // state に戻り先を埋め込む（callback で取り出す）
-  const state = nonce + '|' + Buffer.from(returnTo).toString('base64url');
+  // state に「戻り先」と「リンクコード」を埋め込む（callback で取り出す）
+  const state = [nonce, Buffer.from(returnTo).toString('base64url'), linkCode].join('|');
 
   const url = new URL('https://access.line.me/oauth2/v2.1/authorize');
   url.searchParams.set('response_type', 'code');

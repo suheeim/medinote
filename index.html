@@ -520,6 +520,7 @@ function slotTime(slotKey){
 
 const LS_KEY = 'medinote_v1';
 const CFG_KEY = 'medinote_cfg_v1';
+const GTOK_KEY = 'medinote_gtoken_v1';   // Googleトークンを保存（画面遷移・PWAでもログイン維持）
 
 let state = {
   meds: [],          // {id,name,dose,meal,timings:[],note}
@@ -538,6 +539,7 @@ let editingRemindId = null;
 let scanImage = null;            // {dataUrl, mediaType, b64}
 let user = null;                 // {name,email,picture}
 let accessToken = null;
+let gTokenExp = 0;               // accessToken の失効時刻(ms)
 let sheetId = null;
 let tokenClient = null;
 let saveTimer = null;
@@ -904,23 +906,47 @@ function updateLineUI(){
     if(lk) lk.style.display='none';
   }
 }
+let linkPollTimer = null;
+// 連携が完了したときの共通処理（postMessage／ポーリングどちらからでも呼ばれる）
+function onLineLinked(userId, name){
+  if(!userId) return;
+  cfg.lineUserId = userId; cfg.lineName = name || ''; saveCfg();
+  updateLineUI(); postLineSchedule(); toast('LINE連携が完了しました');
+  if(linkPollTimer){ clearInterval(linkPollTimer); linkPollTimer = null; }
+}
 if($('#lineLinkBtn')) $('#lineLinkBtn').onclick = ()=>{
-  // 連携完了ページ（同一オリジンの line-callback.html）
+  // アプリ側でリンクコードを発行（サーバー経由で連携結果を受け取る＝PWAでも確実に取得できる）
+  const code = (self.crypto && crypto.randomUUID ? crypto.randomUUID() : (Math.random().toString(36).slice(2) + Date.now().toString(36))).replace(/-/g,'');
+  // 連携完了ページ（同一オリジンの line-callback.html）：通常ブラウザではpostMessageで即時通知
   const dir = location.origin + location.pathname.replace(/[^/]*$/, '');
   const ret = dir + 'line-callback.html';
-  const url = VERCEL_BASE + '/api/line/login?return=' + encodeURIComponent(ret);
-  // ポップアップで開く → メイン画面は遷移しないのでGoogleログインが保持される
-  const w = window.open(url, 'lineLogin', 'width=480,height=720');
-  if(!w){ location.href = url; }   // ポップアップがブロックされた場合は全画面遷移（保険）
+  const url = VERCEL_BASE + '/api/line/login?code=' + encodeURIComponent(code) + '&return=' + encodeURIComponent(ret);
+
+  // ポップアップ（別ウィンドウ/別タブ）で開く → メイン画面は遷移しないのでGoogleログインが保持される。
+  // ※ iOSのPWA(ホーム画面)ではポップアップが別アプリ(Safari)で開きpostMessageが届かないため、
+  //   サーバーに保存したリンクコードをポーリングして連携結果を取得する。
+  window.open(url, 'lineLogin', 'width=480,height=720');
+
+  // リンクコードをポーリング（最長3分）。完了したら自動でUI更新。
+  if(linkPollTimer) clearInterval(linkPollTimer);
+  const started = Date.now();
+  toast('LINEログイン画面を開きました。完了するとこの画面に反映されます。');
+  linkPollTimer = setInterval(async ()=>{
+    if(Date.now() - started > 180000){ clearInterval(linkPollTimer); linkPollTimer = null; return; }
+    if(cfg.lineUserId){ clearInterval(linkPollTimer); linkPollTimer = null; return; }
+    try{
+      const r = await fetch(VERCEL_BASE + '/api/line/status?code=' + encodeURIComponent(code));
+      if(!r.ok) return;
+      const d = await r.json();
+      if(d.linked && d.userId) onLineLinked(d.userId, d.name);
+    }catch(_){}
+  }, 2500);
 };
-// ポップアップ(line-callback.html)からの連携完了メッセージを受信
+// ポップアップ(line-callback.html)からの連携完了メッセージを受信（通常ブラウザの即時パス）
 window.addEventListener('message', (e)=>{
   if(e.origin !== location.origin) return;
   const d = e.data;
-  if(d && d.type==='line-linked' && d.line){
-    cfg.lineUserId = d.line; cfg.lineName = d.lineName || ''; saveCfg();
-    updateLineUI(); postLineSchedule(); toast('LINE連携が完了しました');
-  }
+  if(d && d.type==='line-linked' && d.line){ onLineLinked(d.line, d.lineName); }
 });
 if($('#lineUnlinkBtn')) $('#lineUnlinkBtn').onclick = ()=>{
   if(!confirm('LINE連携を解除しますか？')) return;
@@ -1269,6 +1295,8 @@ function initGoogleAuth(){
       callback: async (resp)=>{
         if(resp.error){ toast('ログインに失敗しました'); return; }
         accessToken = resp.access_token;
+        gTokenExp = Date.now() + ((Number(resp.expires_in)||3600) * 1000) - 60000; // 1分の余裕
+        saveGTok();
         await afterSignIn();
       }
     });
@@ -1279,10 +1307,32 @@ function googleSignIn(){
   if(!tokenClient){ initGoogleAuth(); if(!tokenClient){ toast('Google認証を初期化できませんでした'); return; } }
   tokenClient.requestAccessToken({prompt:'consent'});
 }
+// Googleトークン＋プロフィールをlocalStorageへ保存（画面遷移やPWA再起動でも維持）
+function saveGTok(){
+  try{
+    if(accessToken && gTokenExp > Date.now()){
+      localStorage.setItem(GTOK_KEY, JSON.stringify({ accessToken, exp:gTokenExp, user, sheetId }));
+    }
+  }catch(_){}
+}
+// 起動時に保存済みトークンを復元（失効していなければログイン状態を即時復帰）
+function restoreGTok(){
+  try{
+    const t = JSON.parse(localStorage.getItem(GTOK_KEY) || 'null');
+    if(t && t.accessToken && Number(t.exp) > Date.now()){
+      accessToken = t.accessToken; gTokenExp = Number(t.exp);
+      user = t.user || null; sheetId = t.sheetId || null;
+      return true;
+    }
+    if(t) localStorage.removeItem(GTOK_KEY); // 失効済みは破棄
+  }catch(_){ localStorage.removeItem(GTOK_KEY); }
+  return false;
+}
 async function afterSignIn(){
   try{
     const r = await fetch('https://www.googleapis.com/oauth2/v3/userinfo',{headers:{Authorization:'Bearer '+accessToken}});
     user = await r.json();
+    saveGTok();
     updateAcctUI();
     toast('ログインしました');
     await findOrCreateSheet();
@@ -1313,7 +1363,7 @@ async function findOrCreateSheet(){
   const q = encodeURIComponent(`name='${SHEET_NAME}' and mimeType='application/vnd.google-apps.spreadsheet' and trashed=false`);
   let r = await fetch(`https://www.googleapis.com/drive/v3/files?q=${q}&spaces=drive&fields=files(id,name)`,{headers:{Authorization:'Bearer '+accessToken}});
   let d = await r.json();
-  if(d.files && d.files.length){ sheetId = d.files[0].id; return; }
+  if(d.files && d.files.length){ sheetId = d.files[0].id; saveGTok(); return; }
   // 作成
   r = await fetch('https://sheets.googleapis.com/v4/spreadsheets',{
     method:'POST', headers:{Authorization:'Bearer '+accessToken,'content-type':'application/json'},
@@ -1321,6 +1371,7 @@ async function findOrCreateSheet(){
   });
   d = await r.json();
   sheetId = d.spreadsheetId;
+  saveGTok();
   await cloudSave(); // 初回保存
 }
 async function cloudSave(){
@@ -1357,7 +1408,8 @@ async function cloudLoad(){
 }
 function googleSignOut(){
   if(accessToken && typeof google!=='undefined' && google.accounts){ try{ google.accounts.oauth2.revoke(accessToken); }catch(_){} }
-  accessToken=null; user=null; sheetId=null;
+  accessToken=null; gTokenExp=0; user=null; sheetId=null;
+  try{ localStorage.removeItem(GTOK_KEY); }catch(_){}
   updateAcctUI(); toast('ログアウトしました');
 }
 
@@ -1394,6 +1446,7 @@ function renderAll(){ renderToday(); renderMedList(); renderReminders(); }
 
 function init(){
   loadLocal();
+  restoreGTok();   // 保存済みGoogleトークンを復元（PWA再起動・画面遷移でもログイン維持）
   // 設定欄反映
   $('#cfgGoogleId').value = cfg.googleId;
   $('#cfgClaudeKey').value = cfg.claudeKey;
@@ -1405,6 +1458,9 @@ function init(){
   handleLineRedirect();
   updateLineUI();
   if(cfg.lineUserId) postLineSchedule();
+
+  // 復元済みトークンがあればクラウドを静かに同期
+  if(accessToken){ (sheetId ? cloudLoad() : findOrCreateSheet().then(cloudLoad)).catch(()=>{}); }
 
   // Google SDK 読み込み
   if(cfg.googleId){
