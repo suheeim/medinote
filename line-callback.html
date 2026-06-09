@@ -5,78 +5,29 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>LINE連携</title>
 <style>
-  :root{
-    --brand:#2f7d6e; --brand-dark:#256356; --brand-soft:#e6f2ef;
-    --bg:#f3f6f5; --card:#ffffff; --ink:#1d2b29;
-    --radius:16px; --shadow:0 2px 14px rgba(31,60,55,.07);
-  }
-  *{box-sizing:border-box}
-  body{
-    font-family:-apple-system,"Hiragino Sans",sans-serif;margin:0;
-    background:var(--bg);color:var(--ink);line-height:1.6;
-    min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;
-  }
-  .card{
-    background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);
-    padding:32px 24px;max-width:420px;width:100%;text-align:center;
-  }
-  .icon{font-size:3rem;line-height:1;margin-bottom:8px}
-  h1{font-size:1.25rem;margin:6px 0 4px;color:var(--brand-dark)}
-  #msg{color:#5a6b67;font-size:.95rem;margin:0 0 24px}
-  .btn{
-    display:inline-flex;align-items:center;justify-content:center;gap:8px;
-    width:100%;background:var(--brand);color:#fff;font-weight:800;font-size:1.1rem;
-    border:none;border-radius:14px;padding:16px 18px;cursor:pointer;
-    box-shadow:0 4px 14px rgba(47,125,110,.3);transition:transform .12s,box-shadow .12s;
-  }
-  .btn:active{transform:translateY(1px);box-shadow:0 2px 8px rgba(47,125,110,.25)}
-  .hint{margin-top:16px;font-size:.82rem;color:#8a9794}
-  .hidden{display:none}
+  body{font-family:-apple-system,"Hiragino Sans",sans-serif;text-align:center;padding:48px 20px;color:#2f7d6e;background:#f3f7f5}
+  .ok{font-size:2.4rem}
 </style>
 </head>
 <body>
-  <div class="card">
-    <div class="icon">💊</div>
-    <h1 id="title">LINE連携を処理しています…</h1>
-    <p id="msg">少々お待ちください。</p>
-    <button id="backBtn" class="btn hidden" type="button">📲 アプリに戻る</button>
-    <p id="hint" class="hint hidden">ボタンで戻れない場合は、この画面を閉じてMediNoteアプリを開いてください。</p>
-  </div>
+  <div class="ok">💊</div>
+  <p id="msg">LINE連携を処理しています…</p>
   <script>
   (function(){
     var p = new URLSearchParams(location.search);
     var line = p.get('line'), name = p.get('lineName') || '';
-    var titleEl = document.getElementById('title');
-    var msgEl = document.getElementById('msg');
-    var backBtn = document.getElementById('backBtn');
-    var hintEl = document.getElementById('hint');
-
-    if(line){
-      // 通常ブラウザのポップアップなら親へ通知（即時反映）。
-      // PWA（iOS）ではこのページはSafariで開くため opener は無く postMessage は届かないが、
-      // PWA側はサーバーのリンクコードをポーリングして連携を検知するので問題ない。
-      try{ if(window.opener) window.opener.postMessage({ type:'line-linked', line:line, lineName:name }, location.origin); }catch(e){}
-
-      titleEl.textContent = '連携が完了しました 🎉';
-      msgEl.textContent = name ? (name + ' さんのLINEと連携しました。') : 'LINEと連携しました。';
-      backBtn.classList.remove('hidden');
-      hintEl.classList.remove('hidden');
-
-      // openerがある通常ブラウザでは自動で閉じる（PWA経由のSafariタブでは効かないのでボタンで誘導）。
-      setTimeout(function(){ try{ if(window.opener) window.close(); }catch(e){} }, 300);
+    if(window.opener && line){
+      // ポップアップ：親ウィンドウへ通知して閉じる（メイン画面は遷移しない＝Googleログイン維持）
+      try{ window.opener.postMessage({ type:'line-linked', line:line, lineName:name }, location.origin); }catch(e){}
+      document.getElementById('msg').textContent = '連携が完了しました。この画面は自動で閉じます。';
+      setTimeout(function(){ window.close(); }, 300);
+      setTimeout(function(){ document.getElementById('msg').textContent = '連携が完了しました。この画面は閉じて構いません。'; }, 1200);
+    } else if(line){
+      // ポップアップでない場合（ブロック時の保険）：アプリへ戻す
+      location.replace('index.html?line=' + encodeURIComponent(line) + '&lineName=' + encodeURIComponent(name));
     } else {
-      titleEl.textContent = '連携できませんでした';
-      msgEl.textContent = '連携情報を取得できませんでした。もう一度お試しください。';
-      backBtn.textContent = '📲 アプリに戻る';
-      backBtn.classList.remove('hidden');
-      hintEl.classList.remove('hidden');
+      document.getElementById('msg').textContent = '連携情報を取得できませんでした。もう一度お試しください。';
     }
-
-    // 「アプリに戻る」：MediNoteへ遷移する。
-    // PWA側はポーリングで連携完了を検知済みのため、遷移先で連携済みになる。
-    backBtn.addEventListener('click', function(){
-      location.href = 'https://suheeim.github.io/medinote/';
-    });
   })();
   </script>
 </body>
