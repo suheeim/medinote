@@ -53,6 +53,15 @@
   header.app .acct{display:flex;align-items:center;gap:8px;font-size:.82rem}
   header.app .acct img{width:30px;height:30px;border-radius:50%;border:2px solid rgba(255,255,255,.6)}
   .ghost-btn{background:rgba(255,255,255,.16);color:#fff;border-radius:999px;padding:7px 13px;font-size:.82rem;font-weight:600}
+  /* 言語切り替え（国旗ドロップダウン） */
+  header.app .right{display:flex;align-items:center;gap:10px}
+  .langwrap{position:relative}
+  .lang-btn{background:rgba(255,255,255,.16);color:#fff;border-radius:999px;padding:6px 11px;font-size:.95rem;font-weight:700;line-height:1}
+  .lang-menu{position:absolute;top:calc(100% + 6px);right:0;background:#fff;color:var(--ink);border-radius:12px;box-shadow:0 8px 24px rgba(0,0,0,.18);overflow:hidden;display:none;z-index:50;min-width:140px}
+  .lang-menu.open{display:block}
+  .lang-menu button{display:flex;align-items:center;gap:8px;width:100%;padding:11px 14px;font-size:.92rem;font-weight:600;color:var(--ink);text-align:left}
+  .lang-menu button:hover{background:#f1f6f4}
+  .lang-menu button.on{background:#eaf5f1;color:var(--brand-dark)}
 
   main{max-width:760px;margin:0 auto;padding:16px 14px 30px}
   .view{display:none;animation:fade .25s ease}
@@ -213,9 +222,18 @@
 <body>
 
 <header class="app">
-  <div class="logo"><span class="pill">💊</span> わたしの薬ノート</div>
-  <div class="acct" id="acctBox">
-    <button class="ghost-btn" id="headerSignBtn">ログイン</button>
+  <div class="logo"><span class="pill">💊</span> <span data-i18n="brand">わたしの薬ノート</span></div>
+  <div class="right">
+    <div class="langwrap" id="langWrap">
+      <button class="lang-btn" id="langBtn" aria-label="Language">🇯🇵 ▾</button>
+      <div class="lang-menu" id="langMenu">
+        <button type="button" data-lang="ja">🇯🇵 日本語</button>
+        <button type="button" data-lang="ko">🇰🇷 한국어</button>
+      </div>
+    </div>
+    <div class="acct" id="acctBox">
+      <button class="ghost-btn" id="headerSignBtn" data-i18n="login">ログイン</button>
+    </div>
   </div>
 </header>
 
@@ -223,8 +241,8 @@
   <!-- ログイン誘導バナー（未ログイン時のみ表示） -->
   <div id="loginBanner" class="login-banner" style="display:none">
     <span class="lb-ic">⚠️</span>
-    <div class="lb-txt">データはこの端末にのみ保存されています。<b>Googleでログイン</b>するとどこからでも使えます！</div>
-    <span class="lb-go">ログイン ›</span>
+    <div class="lb-txt" data-i18n-html="banner_text">データはこの端末にのみ保存されています。<b>Googleでログイン</b>するとどこからでも使えます！</div>
+    <span class="lb-go" data-i18n="banner_go">ログイン ›</span>
   </div>
 
   <!-- ========== ホーム：今日の服薬 ========== -->
@@ -245,11 +263,11 @@
             <circle id="ringFg" cx="42" cy="42" r="36" stroke="var(--brand)" stroke-width="9" fill="none"
               stroke-linecap="round" stroke-dasharray="226" stroke-dashoffset="226"/>
           </svg>
-          <div class="num"><b id="ringPct">0%</b><span>達成</span></div>
+          <div class="num"><b id="ringPct">0%</b><span data-i18n="ring_achieve">達成</span></div>
         </div>
         <div style="flex:1">
-          <h2 style="margin-bottom:2px">今日のお薬</h2>
-          <div class="muted" id="todaySummary">服用予定を確認しましょう</div>
+          <h2 style="margin-bottom:2px" data-i18n="today_title">今日のお薬</h2>
+          <div class="muted" id="todaySummary" data-i18n="today_sub">服用予定を確認しましょう</div>
         </div>
       </div>
     </div>
@@ -260,168 +278,140 @@
   <!-- ========== 薬の設定 ========== -->
   <section class="view" id="view-meds">
     <div class="section-title">
-      <h1>お薬の管理</h1>
-      <button class="btn sm" id="addMedBtn">＋ 追加</button>
+      <h1 data-i18n="meds_title">お薬の管理</h1>
+      <button class="btn sm" id="addMedBtn" data-i18n="add">＋ 追加</button>
     </div>
-    <button class="btn sec" id="scanBtn" style="margin-bottom:14px">📷 写真からAIで読み取る</button>
+    <button class="btn sec" id="scanBtn" style="margin-bottom:14px" data-i18n="scan_btn">📷 写真からAIで読み取る</button>
     <div id="medList"></div>
   </section>
 
   <!-- ========== リマインダー ========== -->
   <section class="view" id="view-remind">
     <div class="section-title">
-      <h1>リマインダー</h1>
-      <button class="btn sm" id="addRemindBtn">＋ 追加</button>
-    </div>
-    <div class="banner" id="permPrompt" style="display:none;background:#eaf5f1;border-color:#bfe0d6;color:var(--brand-dark);align-items:center">
-      <span style="font-size:1.3rem">🔔</span>
-      <div style="flex:1">
-        <div style="font-weight:700">通知を許可してください</div>
-        <div class="muted" style="color:var(--brand-dark)">下のボタンを押すと許可ダイアログが表示されます</div>
-      </div>
-      <button class="btn sm" id="permBtn" style="white-space:nowrap">許可する</button>
-    </div>
-    <div class="card">
-      <div class="switch">
-        <div>
-          <div style="font-weight:600">ブラウザ通知</div>
-          <div class="muted">時刻になると端末に通知します</div>
-        </div>
-        <div class="toggle" id="notifToggle"><i></i></div>
-      </div>
-      <div class="switch">
-        <div>
-          <div style="font-weight:600">再通知（スヌーズ）</div>
-          <div class="muted">未服用なら<span id="snoozeMinLbl">10</span>分後に再通知</div>
-        </div>
-        <div class="toggle" id="snoozeToggle"><i></i></div>
-      </div>
-      <div style="text-align:right;margin-top:10px">
-        <button class="btn sec sm" id="diagBtn" style="border:none;color:var(--ink-soft);padding:4px 6px">🔍 通知の状態を確認</button>
-      </div>
+      <h1 data-i18n="remind_title">リマインダー</h1>
+      <button class="btn sm" id="addRemindBtn" data-i18n="add">＋ 追加</button>
     </div>
     <div id="remindList"></div>
     <div class="banner" style="margin-top:6px">
       <span>ℹ️</span>
-      <div>ブラウザ通知はこのページを開いている間に動作します。</div>
+      <div data-i18n="remind_info">ブラウザ通知はこのページを開いている間に動作します。</div>
     </div>
   </section>
 
   <!-- ========== 病院用まとめ ========== -->
   <section class="view" id="view-hospital">
-    <div class="section-title"><h1>病院用まとめ</h1></div>
+    <div class="section-title"><h1 data-i18n="hosp_title">病院用まとめ</h1></div>
     <div class="card">
-      <h2>服薬状況（過去<span id="rangeDays">14</span>日間）</h2>
+      <h2 data-i18n-html="hosp_status">服薬状況（過去<span id="rangeDays">14</span>日間）</h2>
       <div class="stat-grid">
-        <div class="stat"><b id="statRate">—</b><span>平均服薬率</span></div>
-        <div class="stat"><b id="statMeds">—</b><span>登録中のお薬</span></div>
+        <div class="stat"><b id="statRate">—</b><span data-i18n="hosp_avg">平均服薬率</span></div>
+        <div class="stat"><b id="statMeds">—</b><span data-i18n="hosp_regmeds">登録中のお薬</span></div>
       </div>
     </div>
     <div class="card">
-      <h2>お薬一覧</h2>
+      <h2 data-i18n="hosp_medlist">お薬一覧</h2>
       <div id="hospMeds"></div>
     </div>
     <div class="card">
-      <h2>服薬率（お薬別）</h2>
-      <table class="sum"><thead><tr><th>お薬</th><th style="width:120px">服薬率</th></tr></thead>
+      <h2 data-i18n="hosp_rate_bymed">服薬率（お薬別）</h2>
+      <table class="sum"><thead><tr><th data-i18n="th_med">お薬</th><th style="width:120px" data-i18n="th_rate">服薬率</th></tr></thead>
         <tbody id="hospTable"></tbody></table>
     </div>
-    <button class="btn sec" id="printBtn">🖨 この内容を印刷 / PDF保存</button>
+    <button class="btn sec" id="printBtn" data-i18n="print_btn">🖨 この内容を印刷 / PDF保存</button>
   </section>
 
   <!-- ========== アカウント・設定 ========== -->
   <section class="view" id="view-account">
-    <div class="section-title"><h1>アカウント・設定</h1></div>
+    <div class="section-title"><h1 data-i18n="acct_title">アカウント・設定</h1></div>
 
     <div class="card">
-      <h2>Googleアカウント</h2>
-      <div id="acctDetail" class="muted">未ログインです。データはこの端末にのみ保存されます。</div>
+      <h2 data-i18n="google_acct">Googleアカウント</h2>
+      <div id="acctDetail" class="muted" data-i18n="acct_notloggedin">未ログインです。データはこの端末にのみ保存されます。</div>
       <div class="signin-wrap" id="signinArea">
-        <button class="btn" id="googleSignBtn">Googleでログイン</button>
-        <div class="help">ログインすると、ご自身のGoogleドライブにデータが保存され、別の端末でも同期できます。</div>
+        <button class="btn" id="googleSignBtn" data-i18n="google_login_btn">Googleでログイン</button>
+        <div class="help" data-i18n="google_login_help">ログインすると、ご自身のGoogleドライブにデータが保存され、別の端末でも同期できます。</div>
       </div>
       <div id="syncArea" style="display:none">
-        <button class="btn sec sm" id="syncNowBtn" style="width:100%;margin-bottom:8px">☁️ 今すぐ同期</button>
-        <button class="btn warn sm" id="signOutBtn" style="width:100%">ログアウト</button>
+        <button class="btn sec sm" id="syncNowBtn" style="width:100%;margin-bottom:8px" data-i18n="sync_now">☁️ 今すぐ同期</button>
+        <button class="btn warn sm" id="signOutBtn" style="width:100%" data-i18n="logout">ログアウト</button>
       </div>
     </div>
 
     <div class="card">
-      <h2>LINEで通知を受け取る</h2>
-      <div id="lineDetail" class="muted">LINEと連携すると、服薬時間にLINEへ通知が届きます（アプリを閉じていてもOK）。</div>
+      <h2 data-i18n="line_title">LINEで通知を受け取る</h2>
+      <div id="lineDetail" class="muted" data-i18n="line_desc">LINEと連携すると、服薬時間にLINEへ通知が届きます（アプリを閉じていてもOK）。</div>
       <div id="lineLinkArea">
-        <button class="btn" id="lineLinkBtn" style="background:#06c755">LINEと連携する</button>
-        <div class="help">連携時にLINEログインと「友だち追加」が必要です。</div>
+        <button class="btn" id="lineLinkBtn" style="background:#06c755" data-i18n="line_link_btn">LINEと連携する</button>
+        <div class="help" data-i18n="line_link_help">連携時にLINEログインと「友だち追加」が必要です。</div>
       </div>
       <div id="lineLinkedArea" style="display:none">
-        <button class="btn warn sm" id="lineUnlinkBtn" style="width:100%">LINE連携を解除</button>
+        <button class="btn warn sm" id="lineUnlinkBtn" style="width:100%" data-i18n="line_unlink_btn">LINE連携を解除</button>
       </div>
     </div>
 
     <div class="card">
-      <h2>データ</h2>
-      <button class="btn sec sm" id="exportBtn" style="width:100%;margin-bottom:8px">⬇️ データを書き出し（JSON）</button>
-      <button class="btn warn sm" id="resetBtn" style="width:100%">すべてのデータを削除</button>
+      <h2 data-i18n="data_title">データ</h2>
+      <button class="btn warn sm" id="resetBtn" style="width:100%" data-i18n="reset_btn">すべてのデータを削除</button>
     </div>
-    <div class="muted" style="text-align:center;font-size:.74rem;margin-top:8px">わたしの薬ノート · 単一ファイル版</div>
+    <div class="muted" style="text-align:center;font-size:.74rem;margin-top:8px" data-i18n="footer">わたしの薬ノート · 単一ファイル版</div>
   </section>
 </main>
 
 <nav class="tabbar">
-  <button data-tab="today" class="on"><span class="ic">📅</span>今日</button>
-  <button data-tab="meds"><span class="ic">💊</span>お薬</button>
-  <button data-tab="remind"><span class="ic">⏰</span>通知</button>
-  <button data-tab="hospital"><span class="ic">🏥</span>病院用</button>
-  <button data-tab="account"><span class="ic">⚙️</span>設定</button>
+  <button data-tab="today" class="on"><span class="ic">📅</span><span data-i18n="tab_today">今日</span></button>
+  <button data-tab="meds"><span class="ic">💊</span><span data-i18n="tab_meds">お薬</span></button>
+  <button data-tab="remind"><span class="ic">⏰</span><span data-i18n="tab_remind">通知</span></button>
+  <button data-tab="hospital"><span class="ic">🏥</span><span data-i18n="tab_hospital">病院用</span></button>
+  <button data-tab="account"><span class="ic">⚙️</span><span data-i18n="tab_account">設定</span></button>
 </nav>
 
 <!-- ===== お薬 追加/編集モーダル ===== -->
 <div class="modal" id="medModal">
   <div class="sheet">
     <div class="grab"></div>
-    <h2 id="medModalTitle">お薬を追加</h2>
+    <h2 id="medModalTitle" data-i18n="med_add_default">お薬を追加</h2>
     <div class="field">
-      <label>種類</label>
+      <label data-i18n="field_kind">種類</label>
       <div class="chips" id="mKind">
-        <div class="chip on" data-k="med">💊 お薬</div>
-        <div class="chip" data-k="supple">🌿 サプリメント</div>
+        <div class="chip on" data-k="med" data-i18n="kind_med">💊 お薬</div>
+        <div class="chip" data-k="supple" data-i18n="kind_supple">🌿 サプリメント</div>
       </div>
     </div>
     <div class="field">
-      <label>名前</label>
-      <input id="mName" placeholder="例）アムロジピン錠 5mg">
+      <label data-i18n="field_name">名前</label>
+      <input id="mName" data-i18n-ph="ph_name" placeholder="例）アムロジピン錠 5mg">
     </div>
     <div class="row2">
       <div class="field">
-        <label>服用量</label>
-        <input id="mDose" placeholder="例）1錠">
+        <label data-i18n="field_dose">服用量</label>
+        <input id="mDose" data-i18n-ph="ph_dose" placeholder="例）1錠">
       </div>
       <div class="field">
-        <label>食事との関係</label>
+        <label data-i18n="field_meal">食事との関係</label>
         <select id="mMeal">
-          <option value="none">指定なし</option>
-          <option value="before">食前</option>
-          <option value="after">食後</option>
-          <option value="between">食間</option>
+          <option value="none" data-i18n="meal_none_opt">指定なし</option>
+          <option value="before" data-i18n="meal_before">食前</option>
+          <option value="after" data-i18n="meal_after">食後</option>
+          <option value="between" data-i18n="meal_between">食間</option>
         </select>
       </div>
     </div>
     <div class="field">
-      <label>服用タイミング</label>
+      <label data-i18n="field_timing">服用タイミング</label>
       <div class="chips" id="mTimings">
-        <div class="chip" data-t="morning">朝</div>
-        <div class="chip" data-t="noon">昼</div>
-        <div class="chip" data-t="evening">夜</div>
-        <div class="chip" data-t="bed">寝る前</div>
+        <div class="chip" data-t="morning" data-i18n="slot_morning">朝</div>
+        <div class="chip" data-t="noon" data-i18n="slot_noon">昼</div>
+        <div class="chip" data-t="evening" data-i18n="slot_evening">夜</div>
+        <div class="chip" data-t="bed" data-i18n="slot_bed">寝る前</div>
       </div>
     </div>
     <div class="field">
-      <label>メモ（任意）</label>
-      <textarea id="mNote" rows="2" placeholder="例）血圧の薬。飲み忘れ注意"></textarea>
+      <label data-i18n="field_note">メモ（任意）</label>
+      <textarea id="mNote" rows="2" data-i18n-ph="ph_note" placeholder="例）血圧の薬。飲み忘れ注意"></textarea>
     </div>
-    <button class="btn" id="saveMedBtn">保存する</button>
-    <button class="btn sec sm" id="deleteMedBtn" style="width:100%;margin-top:8px;display:none">このお薬を削除</button>
-    <button class="btn sec sm" id="closeMedBtn" style="width:100%;margin-top:8px;border:none;color:var(--ink-soft)">閉じる</button>
+    <button class="btn" id="saveMedBtn" data-i18n="save_btn">保存する</button>
+    <button class="btn sec sm" id="deleteMedBtn" style="width:100%;margin-top:8px;display:none" data-i18n="del_med_btn">このお薬を削除</button>
+    <button class="btn sec sm" id="closeMedBtn" style="width:100%;margin-top:8px;border:none;color:var(--ink-soft)" data-i18n="close_btn">閉じる</button>
   </div>
 </div>
 
@@ -429,21 +419,21 @@
 <div class="modal" id="remindModal">
   <div class="sheet">
     <div class="grab"></div>
-    <h2 id="remindModalTitle">リマインダー</h2>
+    <h2 id="remindModalTitle" data-i18n="remind_modal_title">リマインダー</h2>
     <div class="row2">
-      <div class="field"><label>時刻</label><input id="rTime" type="time" value="08:00"></div>
-      <div class="field"><label>タイミング</label>
+      <div class="field"><label data-i18n="field_time">時刻</label><input id="rTime" type="time" value="08:00"></div>
+      <div class="field"><label data-i18n="field_slot">タイミング</label>
         <select id="rSlot">
-          <option value="morning">朝</option>
-          <option value="noon">昼</option>
-          <option value="evening">夜</option>
-          <option value="bed">寝る前</option>
+          <option value="morning" data-i18n="slot_morning">朝</option>
+          <option value="noon" data-i18n="slot_noon">昼</option>
+          <option value="evening" data-i18n="slot_evening">夜</option>
+          <option value="bed" data-i18n="slot_bed">寝る前</option>
         </select>
       </div>
     </div>
-    <button class="btn" id="saveRemindBtn">保存する</button>
-    <button class="btn sec sm" id="deleteRemindBtn" style="width:100%;margin-top:8px;display:none">削除</button>
-    <button class="btn sec sm" id="closeRemindBtn" style="width:100%;margin-top:8px;border:none;color:var(--ink-soft)">閉じる</button>
+    <button class="btn" id="saveRemindBtn" data-i18n="save_btn">保存する</button>
+    <button class="btn sec sm" id="deleteRemindBtn" style="width:100%;margin-top:8px;display:none" data-i18n="del_btn">削除</button>
+    <button class="btn sec sm" id="closeRemindBtn" style="width:100%;margin-top:8px;border:none;color:var(--ink-soft)" data-i18n="close_btn">閉じる</button>
   </div>
 </div>
 
@@ -451,26 +441,26 @@
 <div class="modal" id="scanModal">
   <div class="sheet">
     <div class="grab"></div>
-    <h2>📷 写真からお薬を読み取り</h2>
-    <p class="muted">読み取る写真の種類と取得元を選んでください。AIが内容を読み取ります。</p>
+    <h2 data-i18n="scan_modal_title">📷 写真からお薬を読み取り</h2>
+    <p class="muted" data-i18n="scan_desc">読み取る写真の種類と取得元を選んでください。AIが内容を読み取ります。</p>
 
-    <div style="font-size:.82rem;font-weight:600;color:var(--ink-soft);margin-bottom:6px">① 読み取る写真の種類</div>
+    <div style="font-size:.82rem;font-weight:600;color:var(--ink-soft);margin-bottom:6px" data-i18n="scan_step1">① 読み取る写真の種類</div>
     <div class="chips" id="scanMode" style="margin-bottom:15px">
-      <button type="button" class="chip on" data-mode="photo">💊 薬の写真</button>
-      <button type="button" class="chip" data-mode="list">📋 薬一覧のテキスト</button>
+      <button type="button" class="chip on" data-mode="photo" data-i18n="scan_mode_photo">💊 薬の写真</button>
+      <button type="button" class="chip" data-mode="list" data-i18n="scan_mode_list">📋 薬一覧のテキスト</button>
     </div>
 
-    <div style="font-size:.82rem;font-weight:600;color:var(--ink-soft);margin-bottom:6px">② 写真の取得元</div>
+    <div style="font-size:.82rem;font-weight:600;color:var(--ink-soft);margin-bottom:6px" data-i18n="scan_step2">② 写真の取得元</div>
     <div style="display:flex;gap:10px">
-      <button type="button" class="btn sec" id="cameraBtn" style="flex:1">📷 カメラで撮影</button>
-      <button type="button" class="btn sec" id="albumBtn" style="flex:1">🖼️ アルバムから選択</button>
+      <button type="button" class="btn sec" id="cameraBtn" style="flex:1" data-i18n="scan_camera">📷 カメラで撮影</button>
+      <button type="button" class="btn sec" id="albumBtn" style="flex:1" data-i18n="scan_album">🖼️ アルバムから選択</button>
     </div>
     <input id="scanFileCamera" type="file" accept="image/*" capture="environment" style="display:none">
     <input id="scanFileAlbum" type="file" accept="image/*" style="display:none">
     <div id="scanPreview"></div>
-    <button class="btn" id="runScanBtn" style="margin-top:12px;display:none">🔍 AIで読み取る</button>
+    <button class="btn" id="runScanBtn" style="margin-top:12px;display:none" data-i18n="scan_run">🔍 AIで読み取る</button>
     <div id="scanResult"></div>
-    <button class="btn sec sm" id="closeScanBtn" style="width:100%;margin-top:10px;border:none;color:var(--ink-soft)">閉じる</button>
+    <button class="btn sec sm" id="closeScanBtn" style="width:100%;margin-top:10px;border:none;color:var(--ink-soft)" data-i18n="close_btn">閉じる</button>
   </div>
 </div>
 
@@ -497,6 +487,204 @@ function slotTime(slotKey){
   return rs[0] || DEFAULT_SLOT_TIME[slotKey] || '08:00';
 }
 
+/* ============================================================
+   多言語対応（i18n）：日本語(ja) / 한국어(ko）
+   - 静的HTMLは data-i18n / data-i18n-html / data-i18n-ph 属性で切替
+   - 動的に生成する文字列は t('key', ...args) で取得
+   ============================================================ */
+let lang = 'ja';
+const I18N = {
+  ja: {
+    brand:'わたしの薬ノート', login:'ログイン',
+    banner_text:'データはこの端末にのみ保存されています。<b>Googleでログイン</b>するとどこからでも使えます！',
+    banner_go:'ログイン ›',
+    today_title:'今日のお薬', today_sub:'服用予定を確認しましょう', ring_achieve:'達成',
+    meds_title:'お薬の管理', add:'＋ 追加', scan_btn:'📷 写真からAIで読み取る',
+    remind_title:'リマインダー', remind_info:'ブラウザ通知はこのページを開いている間に動作します。',
+    hosp_title:'病院用まとめ', hosp_status:'服薬状況（過去<span id="rangeDays">14</span>日間）',
+    hosp_avg:'平均服薬率', hosp_regmeds:'登録中のお薬', hosp_medlist:'お薬一覧',
+    hosp_rate_bymed:'服薬率（お薬別）', th_med:'お薬', th_rate:'服薬率', print_btn:'🖨 この内容を印刷 / PDF保存',
+    acct_title:'アカウント・設定', google_acct:'Googleアカウント',
+    acct_notloggedin:'未ログインです。データはこの端末にのみ保存されます。',
+    google_login_btn:'Googleでログイン',
+    google_login_help:'ログインすると、ご自身のGoogleドライブにデータが保存され、別の端末でも同期できます。',
+    sync_now:'☁️ 今すぐ同期', logout:'ログアウト',
+    line_title:'LINEで通知を受け取る',
+    line_desc:'LINEと連携すると、服薬時間にLINEへ通知が届きます（アプリを閉じていてもOK）。',
+    line_link_btn:'LINEと連携する', line_link_help:'連携時にLINEログインと「友だち追加」が必要です。',
+    line_unlink_btn:'LINE連携を解除', data_title:'データ', reset_btn:'すべてのデータを削除',
+    footer:'わたしの薬ノート · 単一ファイル版',
+    tab_today:'今日', tab_meds:'お薬', tab_remind:'通知', tab_hospital:'病院用', tab_account:'設定',
+    field_kind:'種類', kind_med:'💊 お薬', kind_supple:'🌿 サプリメント',
+    field_name:'名前', ph_name:'例）アムロジピン錠 5mg', field_dose:'服用量', ph_dose:'例）1錠',
+    field_meal:'食事との関係', meal_none_opt:'指定なし', meal_before:'食前', meal_after:'食後', meal_between:'食間',
+    field_timing:'服用タイミング',
+    slot_morning:'朝', slot_noon:'昼', slot_evening:'夜', slot_bed:'寝る前',
+    field_note:'メモ（任意）', ph_note:'例）血圧の薬。飲み忘れ注意',
+    save_btn:'保存する', del_med_btn:'このお薬を削除', close_btn:'閉じる',
+    remind_modal_title:'リマインダー', field_time:'時刻', field_slot:'タイミング', del_btn:'削除',
+    scan_modal_title:'📷 写真からお薬を読み取り',
+    scan_desc:'読み取る写真の種類と取得元を選んでください。AIが内容を読み取ります。',
+    scan_step1:'① 読み取る写真の種類', scan_mode_photo:'💊 薬の写真', scan_mode_list:'📋 薬一覧のテキスト',
+    scan_step2:'② 写真の取得元', scan_camera:'📷 カメラで撮影', scan_album:'🖼️ アルバムから選択', scan_run:'🔍 AIで読み取る',
+    med_add_default:'お薬を追加',
+    // 動的
+    date_today:'今日', date_yesterday:'昨日', date_tomorrow:'明日',
+    weekdays:['日','月','火','水','木','金','土'],
+    date_label:(m,d,w,l)=>`${m}月${d}日(${w}) ${l}`.trim(),
+    unit_done:'完了', dose_done:'✓ 済み', dose_take:'飲んだ', all_done:'✓ すべて済み', take_all:'まとめて飲んだ',
+    group_med:'お薬', group_supple:'サプリメント',
+    empty_today:'この日に予定されたお薬はありません', register_med:'お薬を登録する',
+    summary_taken:(t,d)=>`${t}件中 ${d}件 服用済み`, no_meds_registered:'お薬が登録されていません',
+    overdue_msg:(s)=>`${s}の薬がまだです！飲みましたか？`,
+    toast_slot_taken:(l)=>`${l}を服用済みにしました`, toast_uncheck:'チェックを外しました',
+    toast_slot_done:(l)=>`${l}を完了にしました`,
+    empty_meds:'まだお薬が登録されていません', empty_meds_hint:'「＋追加」または「写真から読み取る」で登録できます',
+    med_edit_supple:'サプリメントを編集', med_edit_med:'お薬を編集', med_add:'お薬・サプリを追加',
+    toast_name_req:'名前を入力してください', toast_timing_req:'タイミングを選んでください',
+    toast_saved:'保存しました', confirm_del_med:'このお薬を削除しますか？', toast_deleted:'削除しました',
+    empty_reminders:'リマインダーがありません', reminder_label:'通知',
+    toast_saved_enable_notif:'保存しました（通知を有効にしてください）',
+    confirm_del_reminder:'このリマインダーを削除しますか？',
+    hosp_no_meds:'登録されたお薬はありません', no_data:'データなし',
+    scanning:'読み取り中…', scan_failed:(m)=>`読み取りに失敗しました：${m}`,
+    parse_failed:'応答を解析できませんでした',
+    scan_no_result:'お薬情報を読み取れませんでした。別の写真でお試しください。',
+    scan_result_count:(n)=>`${n}件のお薬を読み取りました`, scan_no_detail:'詳細なし',
+    scan_import_btn:'選択したお薬を登録する', default_med_name:'お薬',
+    toast_imported:(n)=>`${n}件のお薬を登録しました`, api_error:(s)=>`APIエラー (${s})`,
+    toast_logged_out:'ログアウトしました', toast_login_req:'ログインしてください', toast_synced:'同期しました',
+    confirm_reset:'すべてのお薬・記録を削除します。よろしいですか？',
+    toast_login_failed:'ログインに失敗しました', toast_set_clientid:'先にGoogleクライアントIDを設定してください',
+    toast_auth_init_failed:'Google認証を初期化できませんでした', toast_logged_in:'ログインしました',
+    toast_profile_failed:'プロフィール取得に失敗しました', toast_cloud_loaded:'クラウドから読み込みました',
+    acct_syncing_short:'同期中', acct_syncing:'Googleドライブに同期中 ☁️',
+    line_linked_label:'LINE連携済み', line_linked_desc:'服薬時間にLINEへ通知が届きます。',
+    toast_line_linked:'LINE連携が完了しました',
+    toast_line_opened:'LINEログイン画面を開きました。完了するとこの画面に反映されます。',
+    confirm_line_unlink:'LINE連携を解除しますか？', toast_line_unlinked:'LINE連携を解除しました',
+    toast_notif_unsupported:'この端末は通知に対応していません',
+    list_sep:'、',
+    notif_title:'💊 わたしの薬ノート — お薬の時間です',
+    notif_body_pending:(l,c,n)=>`${l}のお薬 ${c}件：${n}`, notif_body_time:(l)=>`${l}のお薬の時間です`,
+    notif_resnooze_title:'🔔 わたしの薬ノート — 再通知',
+    notif_resnooze_body:(n)=>`まだ服用していないお薬があります：${n}`,
+    scan_prompt_list:'この画像はお薬の一覧表・処方箋・お薬手帳のテキスト部分など、複数のお薬名が文字で並んでいるリストです。記載されている文字情報を読み取り、お薬ごとに名前・1回の服用量・食事との関係・服用タイミング（朝/昼/夜/寝る前）・注意事項を抽出してください。表や箇条書きの各行を1つのお薬として扱ってください。日本語で記載してください。読み取れない項目は空文字または空配列にしてください。',
+    scan_prompt_photo:'この画像（お薬の袋・包装・PTPシート・薬そのものの写真など）から、写っているお薬の情報を読み取ってください。お薬ごとに名前・1回の服用量・食事との関係・服用タイミング（朝/昼/夜/寝る前）・注意事項を抽出してください。日本語で記載してください。読み取れない項目は空文字または空配列にしてください。'
+  },
+  ko: {
+    brand:'내 약 노트', login:'로그인',
+    banner_text:'데이터가 이 기기에만 저장되어 있습니다. <b>Google 로그인</b>하면 어디서나 사용할 수 있어요!',
+    banner_go:'로그인 ›',
+    today_title:'오늘의 약', today_sub:'복용 예정을 확인하세요', ring_achieve:'달성',
+    meds_title:'약 관리', add:'＋ 추가', scan_btn:'📷 사진에서 AI로 읽기',
+    remind_title:'리마인더', remind_info:'브라우저 알림은 이 페이지를 열어 둔 동안 동작합니다.',
+    hosp_title:'병원용 요약', hosp_status:'복약 현황(최근 <span id="rangeDays">14</span>일간)',
+    hosp_avg:'평균 복약률', hosp_regmeds:'등록된 약', hosp_medlist:'약 목록',
+    hosp_rate_bymed:'복약률(약별)', th_med:'약', th_rate:'복약률', print_btn:'🖨 인쇄 / PDF 저장',
+    acct_title:'계정·설정', google_acct:'Google 계정',
+    acct_notloggedin:'로그인하지 않았습니다. 데이터는 이 기기에만 저장됩니다.',
+    google_login_btn:'Google로 로그인',
+    google_login_help:'로그인하면 본인의 Google 드라이브에 데이터가 저장되어 다른 기기에서도 동기화됩니다.',
+    sync_now:'☁️ 지금 동기화', logout:'로그아웃',
+    line_title:'LINE으로 알림 받기',
+    line_desc:'LINE과 연동하면 복약 시간에 LINE으로 알림이 옵니다(앱을 닫아도 OK).',
+    line_link_btn:'LINE과 연동하기', line_link_help:'연동 시 LINE 로그인과 \'친구 추가\'가 필요합니다.',
+    line_unlink_btn:'LINE 연동 해제', data_title:'데이터', reset_btn:'모든 데이터 삭제',
+    footer:'내 약 노트 · 단일 파일 버전',
+    tab_today:'오늘', tab_meds:'약', tab_remind:'알림', tab_hospital:'병원용', tab_account:'설정',
+    field_kind:'종류', kind_med:'💊 약', kind_supple:'🌿 영양제',
+    field_name:'이름', ph_name:'예) 암로디핀정 5mg', field_dose:'복용량', ph_dose:'예) 1정',
+    field_meal:'식사와의 관계', meal_none_opt:'지정 안 함', meal_before:'식전', meal_after:'식후', meal_between:'식간',
+    field_timing:'복용 시점',
+    slot_morning:'아침', slot_noon:'점심', slot_evening:'저녁', slot_bed:'자기 전',
+    field_note:'메모(선택)', ph_note:'예) 혈압약. 복용 잊지 않기',
+    save_btn:'저장하기', del_med_btn:'이 약 삭제', close_btn:'닫기',
+    remind_modal_title:'리마인더', field_time:'시간', field_slot:'시점', del_btn:'삭제',
+    scan_modal_title:'📷 사진에서 약 읽기',
+    scan_desc:'읽을 사진의 종류와 가져올 곳을 선택하세요. AI가 내용을 읽습니다.',
+    scan_step1:'① 읽을 사진의 종류', scan_mode_photo:'💊 약 사진', scan_mode_list:'📋 약 목록 텍스트',
+    scan_step2:'② 사진 가져올 곳', scan_camera:'📷 카메라로 촬영', scan_album:'🖼️ 앨범에서 선택', scan_run:'🔍 AI로 읽기',
+    med_add_default:'약 추가',
+    // 동적
+    date_today:'오늘', date_yesterday:'어제', date_tomorrow:'내일',
+    weekdays:['일','월','화','수','목','금','토'],
+    date_label:(m,d,w,l)=>`${m}월 ${d}일 (${w}) ${l}`.trim(),
+    unit_done:'완료', dose_done:'✓ 완료', dose_take:'복용함', all_done:'✓ 모두 완료', take_all:'한꺼번에 복용',
+    group_med:'약', group_supple:'영양제',
+    empty_today:'이 날 예정된 약이 없습니다', register_med:'약 등록하기',
+    summary_taken:(t,d)=>`총 ${t}건 중 ${d}건 복용함`, no_meds_registered:'등록된 약이 없습니다',
+    overdue_msg:(s)=>`${s} 약을 아직 안 드셨어요! 드셨나요?`,
+    toast_slot_taken:(l)=>`${l} 복용 완료로 표시했어요`, toast_uncheck:'체크를 해제했어요',
+    toast_slot_done:(l)=>`${l}을(를) 완료로 표시했어요`,
+    empty_meds:'아직 등록된 약이 없습니다', empty_meds_hint:'\'＋추가\' 또는 \'사진에서 읽기\'로 등록할 수 있어요',
+    med_edit_supple:'영양제 편집', med_edit_med:'약 편집', med_add:'약·영양제 추가',
+    toast_name_req:'이름을 입력하세요', toast_timing_req:'시점을 선택하세요',
+    toast_saved:'저장했습니다', confirm_del_med:'이 약을 삭제할까요?', toast_deleted:'삭제했습니다',
+    empty_reminders:'리마인더가 없습니다', reminder_label:'알림',
+    toast_saved_enable_notif:'저장했습니다(알림을 켜 주세요)',
+    confirm_del_reminder:'이 리마인더를 삭제할까요?',
+    hosp_no_meds:'등록된 약이 없습니다', no_data:'데이터 없음',
+    scanning:'읽는 중…', scan_failed:(m)=>`읽기에 실패했습니다: ${m}`,
+    parse_failed:'응답을 해석할 수 없습니다',
+    scan_no_result:'약 정보를 읽지 못했습니다. 다른 사진으로 시도해 보세요.',
+    scan_result_count:(n)=>`약 ${n}건을 읽었습니다`, scan_no_detail:'상세 없음',
+    scan_import_btn:'선택한 약 등록하기', default_med_name:'약',
+    toast_imported:(n)=>`약 ${n}건을 등록했습니다`, api_error:(s)=>`API 오류 (${s})`,
+    toast_logged_out:'로그아웃했습니다', toast_login_req:'로그인해 주세요', toast_synced:'동기화했습니다',
+    confirm_reset:'모든 약·기록을 삭제합니다. 계속할까요?',
+    toast_login_failed:'로그인에 실패했습니다', toast_set_clientid:'먼저 Google 클라이언트 ID를 설정하세요',
+    toast_auth_init_failed:'Google 인증을 초기화할 수 없습니다', toast_logged_in:'로그인했습니다',
+    toast_profile_failed:'프로필을 가져오지 못했습니다', toast_cloud_loaded:'클라우드에서 불러왔습니다',
+    acct_syncing_short:'동기화 중', acct_syncing:'Google 드라이브에 동기화 중 ☁️',
+    line_linked_label:'LINE 연동됨', line_linked_desc:'복약 시간에 LINE으로 알림이 옵니다.',
+    toast_line_linked:'LINE 연동이 완료되었습니다',
+    toast_line_opened:'LINE 로그인 화면을 열었습니다. 완료되면 이 화면에 반영됩니다.',
+    confirm_line_unlink:'LINE 연동을 해제할까요?', toast_line_unlinked:'LINE 연동을 해제했습니다',
+    toast_notif_unsupported:'이 기기는 알림을 지원하지 않습니다',
+    list_sep:', ',
+    notif_title:'💊 내 약 노트 — 약 드실 시간이에요',
+    notif_body_pending:(l,c,n)=>`${l} 약 ${c}건: ${n}`, notif_body_time:(l)=>`${l} 약 드실 시간이에요`,
+    notif_resnooze_title:'🔔 내 약 노트 — 다시 알림',
+    notif_resnooze_body:(n)=>`아직 복용하지 않은 약이 있어요: ${n}`,
+    scan_prompt_list:'이 이미지는 약 목록표·처방전·약 수첩의 텍스트 부분 등 여러 약 이름이 글자로 나열된 목록입니다. 적힌 문자 정보를 읽어, 약마다 이름·1회 복용량·식사와의 관계·복용 시점(아침/점심/저녁/자기 전)·주의사항을 추출하세요. 표나 항목의 각 줄을 하나의 약으로 취급하세요. 한국어로 작성해 주세요. 읽을 수 없는 항목은 빈 문자열 또는 빈 배열로 두세요.',
+    scan_prompt_photo:'이 이미지(약 봉투·포장·PTP 시트·약 자체의 사진 등)에서 보이는 약 정보를 읽어 주세요. 약마다 이름·1회 복용량·식사와의 관계·복용 시점(아침/점심/저녁/자기 전)·주의사항을 추출하세요. 한국어로 작성해 주세요. 읽을 수 없는 항목은 빈 문자열 또는 빈 배열로 두세요.'
+  }
+};
+function t(key, ...args){
+  const dict = I18N[lang] || I18N.ja;
+  let v = dict[key]; if(v===undefined) v = I18N.ja[key];
+  if(v===undefined) return key;
+  return typeof v==='function' ? v(...args) : v;
+}
+function slotLabel(key){ return t('slot_'+key); }
+function mealLabel(meal){ return (meal && meal!=='none') ? t('meal_'+meal) : ''; }
+// SLOTS.label / MEAL_LABEL を現在の言語に同期（既存の参照箇所をそのまま使えるように）
+function applyLangData(){
+  SLOTS.forEach(s=>{ s.label = slotLabel(s.key); });
+  MEAL_LABEL.before = t('meal_before'); MEAL_LABEL.after = t('meal_after'); MEAL_LABEL.between = t('meal_between');
+}
+// data-i18n / data-i18n-html / data-i18n-ph を持つ静的要素を翻訳
+function applyStaticI18n(){
+  document.querySelectorAll('[data-i18n]').forEach(el=>{ el.textContent = t(el.getAttribute('data-i18n')); });
+  document.querySelectorAll('[data-i18n-html]').forEach(el=>{ el.innerHTML = t(el.getAttribute('data-i18n-html')); });
+  document.querySelectorAll('[data-i18n-ph]').forEach(el=>{ el.setAttribute('placeholder', t(el.getAttribute('data-i18n-ph'))); });
+}
+function updateLangUI(){
+  const btn = $('#langBtn'); if(btn) btn.textContent = (lang==='ko'?'🇰🇷':'🇯🇵') + ' ▾';
+  document.querySelectorAll('#langMenu [data-lang]').forEach(b=> b.classList.toggle('on', b.getAttribute('data-lang')===lang));
+}
+function setLang(l){
+  lang = (l==='ko') ? 'ko' : 'ja';
+  cfg.lang = lang; saveCfg();
+  document.documentElement.lang = lang;
+  document.title = t('brand');
+  applyLangData();
+  applyStaticI18n();
+  updateLangUI();
+  renderAll(); updateAcctUI(); updateLineUI();
+}
+
 const LS_KEY = 'medinote_v1';
 const CFG_KEY = 'medinote_cfg_v1';
 const GTOK_KEY = 'medinote_gtoken_v1';   // Googleトークンを保存（画面遷移・PWAでもログイン維持）
@@ -510,7 +698,7 @@ let state = {
 // Google OAuth クライアントID（コードに直接埋め込み。OAuthクライアントIDは公開前提の値）
 const GOOGLE_CLIENT_ID = '891983471844-u0s3s0aumkpi4a5ufrl6djbq60m5e20n.apps.googleusercontent.com';
 const VERCEL_BASE = 'https://project-53ect.vercel.app';   // LINE通知サーバー
-let cfg = { googleId:GOOGLE_CLIENT_ID, claudeKey:'', lineUserId:'', lineName:'' };
+let cfg = { googleId:GOOGLE_CLIENT_ID, claudeKey:'', lineUserId:'', lineName:'', lang:'ja' };
 
 let viewDate = new Date();       // 表示中の日付
 let editingMedId = null;
@@ -580,11 +768,11 @@ function renderToday(){
   const ds = fmtDate(viewDate);
   const today = new Date();
   let label;
-  if(isSameDay(viewDate,today)) label='今日';
+  if(isSameDay(viewDate,today)) label=t('date_today');
   else{ const y=new Date(today); y.setDate(y.getDate()-1); const tm=new Date(today); tm.setDate(tm.getDate()+1);
-    if(isSameDay(viewDate,y)) label='昨日'; else if(isSameDay(viewDate,tm)) label='明日'; else label=''; }
-  const w=['日','月','火','水','木','金','土'][viewDate.getDay()];
-  $('#dateLabel').textContent = `${viewDate.getMonth()+1}月${viewDate.getDate()}日(${w}) ${label}`;
+    if(isSameDay(viewDate,y)) label=t('date_yesterday'); else if(isSameDay(viewDate,tm)) label=t('date_tomorrow'); else label=''; }
+  const w=t('weekdays')[viewDate.getDay()];
+  $('#dateLabel').textContent = t('date_label', viewDate.getMonth()+1, viewDate.getDate(), w, label);
 
   const log = getLog(ds);
   const wrap = $('#slots'); wrap.innerHTML='';
@@ -603,7 +791,7 @@ function renderToday(){
       <div class="slot-head">
         <div class="icon">${s.icon}</div>
         <div class="ttl">${s.label}</div>
-        <div class="cnt">${doneCount}/${meds.length} 完了</div>
+        <div class="cnt">${doneCount}/${meds.length} ${t('unit_done')}</div>
       </div>
       <div class="slot-body">
         ${meds.map(m=>{
@@ -611,12 +799,12 @@ function renderToday(){
           const sub = [MEAL_LABEL[m.meal], m.dose].filter(Boolean).join(' ・ ');
           return `<div class="med-row ${isDone?'done':''}" data-mid="${m.id}" data-slot="${s.key}">
             <div class="info"><div class="nm">${esc(m.name)}</div>${sub?`<div class="sub">${esc(sub)}</div>`:''}</div>
-            <button class="dose-btn ${isDone?'on':''}">${isDone?'✓ 済み':'飲んだ'}</button>
+            <button class="dose-btn ${isDone?'on':''}">${isDone?t('dose_done'):t('dose_take')}</button>
           </div>`;
         }).join('')}
       </div>
       <div class="slot-foot">
-        <button class="btn-all ${allDone?'done':''}" data-allslot="${s.key}" data-kind="${kind}">${allDone?'✓ すべて済み':'まとめて飲んだ'}</button>
+        <button class="btn-all ${allDone?'done':''}" data-allslot="${s.key}" data-kind="${kind}">${allDone?t('all_done'):t('take_all')}</button>
       </div>`;
     wrap.appendChild(el);
   }
@@ -627,27 +815,27 @@ function renderToday(){
   // お薬（上）
   if(medSlots.length && suppleSlots.length){
     const hd = document.createElement('div'); hd.className='group-head';
-    hd.innerHTML = `<span>💊</span> お薬`; wrap.appendChild(hd);
+    hd.innerHTML = `<span>💊</span> ${t('group_med')}`; wrap.appendChild(hd);
   }
   medSlots.forEach(s=> buildSlot(s, medsForSlot(s.key,'med'), 'med'));
 
   // サプリメント（下・別枠）
   if(suppleSlots.length){
     const hd = document.createElement('div'); hd.className='group-head supple';
-    hd.innerHTML = `<span>🌿</span> サプリメント`; wrap.appendChild(hd);
+    hd.innerHTML = `<span>🌿</span> ${t('group_supple')}`; wrap.appendChild(hd);
     suppleSlots.forEach(s=> buildSlot(s, medsForSlot(s.key,'supple'), 'supple'));
   }
 
   if(total===0){
-    wrap.innerHTML = `<div class="card empty"><div class="big">💊</div><div>この日に予定されたお薬はありません</div>
-      <div style="margin-top:12px"><button class="btn sec sm" onclick="switchTab('meds')">お薬を登録する</button></div></div>`;
+    wrap.innerHTML = `<div class="card empty"><div class="big">💊</div><div>${t('empty_today')}</div>
+      <div style="margin-top:12px"><button class="btn sec sm" onclick="switchTab('meds')">${t('register_med')}</button></div></div>`;
   }
 
   // リング
   const pct = total? Math.round(done/total*100):0;
   $('#ringPct').textContent = pct+'%';
   const circ=226; $('#ringFg').style.strokeDashoffset = circ - circ*pct/100;
-  $('#todaySummary').textContent = total? `${total}件中 ${done}件 服用済み` : 'お薬が登録されていません';
+  $('#todaySummary').textContent = total? t('summary_taken', total, done) : t('no_meds_registered');
 
   // 行クリック
   wrap.querySelectorAll('.med-row').forEach(r=>{
@@ -681,8 +869,8 @@ function renderOverdue(ds){
   el.style.display='block';
   el.innerHTML = slots.map(s=>`
     <div class="od-row">
-      <div class="od-msg">${s.icon} ${s.label}の薬がまだです！飲みましたか？</div>
-      <button class="od-btn" data-odslot="${s.key}">飲んだ</button>
+      <div class="od-msg">${s.icon} ${t('overdue_msg', s.label)}</div>
+      <button class="od-btn" data-odslot="${s.key}">${t('dose_take')}</button>
     </div>`).join('');
   el.querySelectorAll('[data-odslot]').forEach(b=> b.onclick=()=> markSlotTaken(ds, b.dataset.odslot));
 }
@@ -690,7 +878,7 @@ function markSlotTaken(ds, slot){
   const log = getLog(ds);
   medsForSlot(slot).forEach(m=>{ if(!log[slot].includes(m.id)) log[slot].push(m.id); });
   saveLocal(); renderToday();
-  toast(`${SLOTS.find(s=>s.key===slot).label}を服用済みにしました`);
+  toast(t('toast_slot_taken', SLOTS.find(s=>s.key===slot).label));
 }
 function toggleDose(ds, slot, mid){
   const log = getLog(ds);
@@ -706,7 +894,7 @@ function completeSlot(ds, slot, kind){
   if(allDone){ log[slot] = log[slot].filter(id=> !ids.includes(id)); }
   else { ids.forEach(id=>{ if(!log[slot].includes(id)) log[slot].push(id); }); }
   saveLocal(); renderToday();
-  toast(allDone? 'チェックを外しました' : `${SLOTS.find(s=>s.key===slot).label}を完了にしました`);
+  toast(allDone? t('toast_uncheck') : t('toast_slot_done', SLOTS.find(s=>s.key===slot).label));
 }
 $('#prevDay').onclick = ()=>{ viewDate.setDate(viewDate.getDate()-1); renderToday(); };
 $('#nextDay').onclick = ()=>{ viewDate.setDate(viewDate.getDate()+1); renderToday(); };
@@ -717,8 +905,8 @@ $('#nextDay').onclick = ()=>{ viewDate.setDate(viewDate.getDate()+1); renderToda
 function renderMedList(){
   const wrap = $('#medList'); wrap.innerHTML='';
   if(state.meds.length===0){
-    wrap.innerHTML = `<div class="card empty"><div class="big">💊</div><div>まだお薬が登録されていません</div>
-      <div class="muted" style="margin-top:6px">「＋追加」または「写真から読み取る」で登録できます</div></div>`;
+    wrap.innerHTML = `<div class="card empty"><div class="big">💊</div><div>${t('empty_meds')}</div>
+      <div class="muted" style="margin-top:6px">${t('empty_meds_hint')}</div></div>`;
     return;
   }
   const sorted = [...state.meds].sort((a,b)=> (medKind(a)==='supple'?1:0) - (medKind(b)==='supple'?1:0));
@@ -746,7 +934,7 @@ function openMedModal(id, prefill){
   editingMedId = id||null;
   const m = id? state.meds.find(x=>x.id===id) : (prefill||{name:'',dose:'',meal:'none',timings:[],note:'',kind:'med'});
   const kind = medKind(m);
-  $('#medModalTitle').textContent = id? (kind==='supple'?'サプリメントを編集':'お薬を編集') : 'お薬・サプリを追加';
+  $('#medModalTitle').textContent = id? (kind==='supple'?t('med_edit_supple'):t('med_edit_med')) : t('med_add');
   $('#mName').value = m.name||'';
   $('#mDose').value = m.dose||'';
   $('#mMeal').value = m.meal||'none';
@@ -761,22 +949,22 @@ $$('#mKind .chip').forEach(c=> c.onclick=()=> $$('#mKind .chip').forEach(x=>x.cl
 $$('#mTimings .chip').forEach(c=> c.onclick=()=>c.classList.toggle('on'));
 $('#saveMedBtn').onclick = ()=>{
   const name = $('#mName').value.trim();
-  if(!name){ toast('名前を入力してください'); return; }
+  if(!name){ toast(t('toast_name_req')); return; }
   const timings = [...$$('#mTimings .chip.on')].map(c=>c.dataset.t);
-  if(timings.length===0){ toast('タイミングを選んでください'); return; }
+  if(timings.length===0){ toast(t('toast_timing_req')); return; }
   const kind = ($('#mKind .chip.on')?.dataset.k)==='supple' ? 'supple' : 'med';
   const data = { name, kind, dose:$('#mDose').value.trim(), meal:$('#mMeal').value, timings, note:$('#mNote').value.trim() };
   if(editingMedId){ const m=state.meds.find(x=>x.id===editingMedId); Object.assign(m,data); }
   else{ data.id=uid(); state.meds.push(data); }
   saveLocal(); renderMedList(); renderToday(); closeModal('medModal'); postLineSchedule();
-  toast('保存しました');
+  toast(t('toast_saved'));
 };
 $('#deleteMedBtn').onclick = ()=>{
   if(!editingMedId) return;
-  if(!confirm('このお薬を削除しますか？')) return;
+  if(!confirm(t('confirm_del_med'))) return;
   state.meds = state.meds.filter(m=>m.id!==editingMedId);
   saveLocal(); renderMedList(); renderToday(); closeModal('medModal'); postLineSchedule();
-  toast('削除しました');
+  toast(t('toast_deleted'));
 };
 $('#closeMedBtn').onclick = ()=>closeModal('medModal');
 
@@ -784,14 +972,9 @@ $('#closeMedBtn').onclick = ()=>closeModal('medModal');
    リマインダー
    ============================================================ */
 function renderReminders(){
-  $('#notifToggle').classList.toggle('on', state.settings.notif);
-  $('#snoozeToggle').classList.toggle('on', state.settings.snooze);
-  $('#snoozeMinLbl').textContent = state.settings.snoozeMin;
-  updatePermPrompt();
-
-  const wrap = $('#remindList'); wrap.innerHTML='';
+  const wrap = $('#remindList'); if(!wrap) return; wrap.innerHTML='';
   if(state.reminders.length===0){
-    wrap.innerHTML = `<div class="card empty"><div class="big">⏰</div><div>リマインダーがありません</div></div>`;
+    wrap.innerHTML = `<div class="card empty"><div class="big">⏰</div><div>${t('empty_reminders')}</div></div>`;
     return;
   }
   state.reminders.sort((a,b)=>a.time.localeCompare(b.time)).forEach(r=>{
@@ -802,7 +985,7 @@ function renderReminders(){
       <div class="badge">${slot?slot.icon:'⏰'}</div>
       <div class="body">
         <div class="nm" style="font-size:1.3rem">${r.time}</div>
-        <div class="meta">${slot?slot.label:''} ・ 通知</div>
+        <div class="meta">${slot?slot.label:''} ・ ${t('reminder_label')}</div>
       </div>
       <button class="icon-btn" data-redit="${r.id}">✏️</button>`;
     wrap.appendChild(card);
@@ -841,7 +1024,7 @@ function handleLineRedirect(){
   p.delete('line'); p.delete('lineName');
   const clean = location.pathname + (p.toString()?('?'+p.toString()):'') + location.hash;
   history.replaceState(null, '', clean);
-  toast('LINE連携が完了しました');
+  toast(t('toast_line_linked'));
   postLineSchedule({authoritative:true});
 }
 // LINE通知のスケジュールを組み立てる
@@ -892,11 +1075,11 @@ function updateLineUI(){
   const d = $('#lineDetail'); const la = $('#lineLinkArea'); const lk = $('#lineLinkedArea');
   if(!d) return;
   if(linked){
-    d.innerHTML = `✅ <b>LINE連携済み</b>${cfg.lineName?'（'+esc(cfg.lineName)+'）':''}<br><span class="muted">服薬時間にLINEへ通知が届きます。</span>`;
+    d.innerHTML = `✅ <b>${t('line_linked_label')}</b>${cfg.lineName?'（'+esc(cfg.lineName)+'）':''}<br><span class="muted">${t('line_linked_desc')}</span>`;
     if(la) la.style.display='none';
     if(lk) lk.style.display='block';
   }else{
-    d.textContent = 'LINEと連携すると、服薬時間にLINEへ通知が届きます（アプリを閉じていてもOK）。';
+    d.textContent = t('line_desc');
     if(la) la.style.display='block';
     if(lk) lk.style.display='none';
   }
@@ -906,7 +1089,7 @@ let linkPollTimer = null;
 function onLineLinked(userId, name){
   if(!userId) return;
   setLineLink(userId, name);   // cfg＋state.line に保存し UI 更新（クラウド同期対象）
-  postLineSchedule({authoritative:true}); toast('LINE連携が完了しました');
+  postLineSchedule({authoritative:true}); toast(t('toast_line_linked'));
   if(linkPollTimer){ clearInterval(linkPollTimer); linkPollTimer = null; }
 }
 if($('#lineLinkBtn')) $('#lineLinkBtn').onclick = ()=>{
@@ -928,7 +1111,7 @@ if($('#lineLinkBtn')) $('#lineLinkBtn').onclick = ()=>{
   // リンクコードをポーリング（最長3分）。完了したら自動でUI更新。
   if(linkPollTimer) clearInterval(linkPollTimer);
   const started = Date.now();
-  toast('LINEログイン画面を開きました。完了するとこの画面に反映されます。');
+  toast(t('toast_line_opened'));
   linkPollTimer = setInterval(async ()=>{
     if(Date.now() - started > 180000){ clearInterval(linkPollTimer); linkPollTimer = null; return; }
     if(cfg.lineUserId){ clearInterval(linkPollTimer); linkPollTimer = null; return; }
@@ -947,12 +1130,12 @@ window.addEventListener('message', (e)=>{
   if(d && d.type==='line-linked' && d.line){ onLineLinked(d.line, d.lineName); }
 });
 if($('#lineUnlinkBtn')) $('#lineUnlinkBtn').onclick = ()=>{
-  if(!confirm('LINE連携を解除しますか？')) return;
-  clearLineLink(); toast('LINE連携を解除しました');
+  if(!confirm(t('confirm_line_unlink'))) return;
+  clearLineLink(); toast(t('toast_line_unlinked'));
 };
 // 通知許可をユーザー操作（タップ）の中で要求する（iOS必須）
 async function requestNotifPermission(){
-  if(!('Notification' in window)){ toast('この端末は通知に対応していません'); return false; }
+  if(!('Notification' in window)){ toast(t('toast_notif_unsupported')); return false; }
   let perm = Notification.permission;
   console.log('[通知] 要求前 permission =', perm);
   if(perm==='default'){
@@ -962,47 +1145,10 @@ async function requestNotifPermission(){
   console.log('[通知] 要求後 permission =', perm);
   return perm==='granted';
 }
-// 許可バナーの表示/非表示
-function updatePermPrompt(){
-  const el = $('#permPrompt'); if(!el) return;
-  const need = ('Notification' in window) && Notification.permission!=='granted';
-  el.style.display = need? 'flex' : 'none';
-}
-$('#permBtn').onclick = async ()=>{
-  console.log('[通知] 許可ボタン タップ\n' + notifDiag());
-  const ok = await requestNotifPermission();
-  if(ok){
-    state.settings.notif = true; saveLocal();
-    renderReminders(); scheduleReminders();
-    toast('通知を許可しました');
-  }else{
-    const perm = ('Notification' in window) ? Notification.permission : 'unsupported';
-    const head = perm==='denied'
-      ? '⚠️ 通知が「拒否」状態で固定されています。\n\n【解除手順】\n①ホーム画面の「薬ノート」を長押し→アプリを削除\n②Safariで開き直す\n③共有→「ホーム画面に追加」\n④アイコンから起動して、もう一度「許可する」\n\n'
-      : (perm==='unsupported'
-          ? 'この画面では通知を利用できません。Safariのタブではなく、ホーム画面に追加したアプリから開いてください。\n\n'
-          : 'ダイアログを表示できませんでした。\n\n');
-    alert(head + notifDiag());
-  }
-  updatePermPrompt();
-};
-$('#diagBtn') && ($('#diagBtn').onclick = ()=> alert(notifDiag()));
-
-$('#notifToggle').onclick = async ()=>{
-  if(!state.settings.notif){
-    const ok = await requestNotifPermission();
-    if(!ok){ updatePermPrompt(); return; }
-  }
-  state.settings.notif = !state.settings.notif;
-  saveLocal(); renderReminders();
-  scheduleReminders();
-};
-$('#snoozeToggle').onclick = ()=>{ state.settings.snooze=!state.settings.snooze; saveLocal(); renderReminders(); };
-
 function openRemindModal(id){
   editingRemindId = id||null;
   const r = id? state.reminders.find(x=>x.id===id) : {time:'08:00',slot:'morning'};
-  $('#remindModalTitle').textContent = 'リマインダー';
+  $('#remindModalTitle').textContent = t('remind_modal_title');
   $('#rTime').value = r.time;
   $('#rSlot').value = r.slot;
   $('#deleteRemindBtn').style.display = id?'block':'none';
@@ -1014,11 +1160,10 @@ $('#saveRemindBtn').onclick = ()=>{
   if(editingRemindId){ const r=state.reminders.find(x=>x.id===editingRemindId); Object.assign(r,data); }
   else{ data.id=uid(); data.lastFired=''; state.reminders.push(data); }
   saveLocal(); renderReminders(); closeModal('remindModal'); scheduleReminders(); postLineSchedule({authoritative:true});
-  if(!state.settings.notif) toast('保存しました（通知を有効にしてください）');
-  else toast('保存しました');
+  toast(t('toast_saved'));
 };
 $('#deleteRemindBtn').onclick = ()=>{
-  if(!confirm('このリマインダーを削除しますか？')) return;
+  if(!confirm(t('confirm_del_reminder'))) return;
   state.reminders = state.reminders.filter(r=>r.id!==editingRemindId);
   saveLocal(); renderReminders(); closeModal('remindModal'); scheduleReminders(); postLineSchedule({authoritative:true});
 };
@@ -1041,16 +1186,16 @@ function checkReminders(){
 function fireReminder(r){
   const slot = SLOTS.find(s=>s.key===r.slot);
   const pending = medsForSlot(r.slot).filter(m=>!getLog(fmtDate(new Date()))[r.slot].includes(m.id));
-  const body = pending.length? `${slot.label}のお薬 ${pending.length}件：${pending.map(m=>m.name).join('、')}` : `${slot.label}のお薬の時間です`;
+  const body = pending.length? t('notif_body_pending', slot.label, pending.length, pending.map(m=>m.name).join(t('list_sep'))) : t('notif_body_time', slot.label);
   if('Notification' in window && Notification.permission==='granted'){
-    const n = new Notification('💊 わたしの薬ノート — お薬の時間です', {body, tag:r.id});
+    const n = new Notification(t('notif_title'), {body, tag:r.id});
     n.onclick = ()=>{ window.focus(); switchTab('today'); };
     // 再通知
     if(state.settings.snooze && pending.length){
       setTimeout(()=>{
         const stillPending = medsForSlot(r.slot).filter(m=>!getLog(fmtDate(new Date()))[r.slot].includes(m.id));
         if(stillPending.length && Notification.permission==='granted'){
-          new Notification('🔔 わたしの薬ノート — 再通知', {body:`まだ服用していないお薬があります：${stillPending.map(m=>m.name).join('、')}`, tag:r.id+'_s'});
+          new Notification(t('notif_resnooze_title'), {body:t('notif_resnooze_body', stillPending.map(m=>m.name).join(t('list_sep'))), tag:r.id+'_s'});
         }
       }, state.settings.snoozeMin*60*1000);
     }
@@ -1079,14 +1224,16 @@ async function scheduleReminders(){
     state.reminders.forEach(r=>{
       const slot = SLOTS.find(s=>s.key===r.slot);
       const [hh,mm] = r.time.split(':').map(Number);
+      const notifTitle = t('notif_title');                 // ループ前に翻訳（下で t は Date 変数に隠れるため）
+      const notifBody = t('notif_body_time', slot?slot.label:'');
       for(let d=0; d<DAYS; d++){
-        const t = new Date(); t.setHours(hh, mm, 0, 0); t.setDate(t.getDate()+d);
-        if(t.getTime() <= now) continue;
+        const dt = new Date(); dt.setHours(hh, mm, 0, 0); dt.setDate(dt.getDate()+d);
+        if(dt.getTime() <= now) continue;
         items.push({
           tag: 'rem-'+r.id+'-'+d,
-          at: t.getTime(),
-          title: '💊 わたしの薬ノート — お薬の時間です',
-          body: `${slot?slot.label:''}のお薬の時間です`
+          at: dt.getTime(),
+          title: notifTitle,
+          body: notifBody
         });
       }
     });
@@ -1104,7 +1251,7 @@ function renderHospital(){
 
   // お薬一覧
   const hm = $('#hospMeds');
-  if(state.meds.length===0){ hm.innerHTML='<div class="muted">登録されたお薬はありません</div>'; }
+  if(state.meds.length===0){ hm.innerHTML=`<div class="muted">${t('hosp_no_meds')}</div>`; }
   else hm.innerHTML = state.meds.map(m=>{
     const times = m.timings.map(t=>SLOTS.find(s=>s.key===t)?.label).filter(Boolean).join('・');
     return `<div style="padding:9px 0;border-bottom:1px solid var(--line)">
@@ -1134,7 +1281,7 @@ function renderHospital(){
     const p = perMed[m.id]; const r = p.exp? Math.round(p.taken/p.exp*100):0;
     return `<tr><td>${esc(m.name)}</td>
       <td><div style="display:flex;align-items:center;gap:8px"><div class="adh-bar" style="flex:1"><i style="width:${r}%"></i></div><span style="font-size:.78rem;white-space:nowrap">${r}%</span></div></td></tr>`;
-  }).join('') : '<tr><td colspan="2" class="muted">データなし</td></tr>';
+  }).join('') : `<tr><td colspan="2" class="muted">${t('no_data')}</td></tr>`;
 }
 $('#printBtn').onclick = ()=>window.print();
 
@@ -1177,21 +1324,20 @@ $('#scanFileAlbum').onchange  = handleScanFile;
 $('#runScanBtn').onclick = async ()=>{
   if(!scanImage) return;
   const btn = $('#runScanBtn');
-  btn.disabled=true; btn.innerHTML='<span class="spinner"></span> 読み取り中…';
+  btn.disabled=true; btn.innerHTML=`<span class="spinner"></span> ${t('scanning')}`;
   try{
     const meds = await callClaudeVision(scanImage, scanMode);
     renderScanResult(meds);
   }catch(err){
-    $('#scanResult').innerHTML = `<div class="ai-result" style="color:var(--danger)">読み取りに失敗しました：${esc(err.message)}</div>`;
+    $('#scanResult').innerHTML = `<div class="ai-result" style="color:var(--danger)">${esc(t('scan_failed', err.message))}</div>`;
   }finally{
-    btn.disabled=false; btn.innerHTML='🔍 AIで読み取る';
+    btn.disabled=false; btn.innerHTML=t('scan_run');
   }
 };
 
 async function callClaudeVision(img, mode='photo'){
-  const promptText = mode==='list'
-    ? 'この画像はお薬の一覧表・処方箋・お薬手帳のテキスト部分など、複数のお薬名が文字で並んでいるリストです。記載されている文字情報を読み取り、お薬ごとに名前・1回の服用量・食事との関係・服用タイミング（朝/昼/夜/寝る前）・注意事項を抽出してください。表や箇条書きの各行を1つのお薬として扱ってください。日本語で記載してください。読み取れない項目は空文字または空配列にしてください。'
-    : 'この画像（お薬の袋・包装・PTPシート・薬そのものの写真など）から、写っているお薬の情報を読み取ってください。お薬ごとに名前・1回の服用量・食事との関係・服用タイミング（朝/昼/夜/寝る前）・注意事項を抽出してください。日本語で記載してください。読み取れない項目は空文字または空配列にしてください。';
+  // 選択中の言語でAIに記載させる（日本語/한국어）
+  const promptText = mode==='list' ? t('scan_prompt_list') : t('scan_prompt_photo');
   const schema = {
     type:'object',
     properties:{
@@ -1211,7 +1357,7 @@ async function callClaudeVision(img, mode='photo'){
     body: JSON.stringify({ b64:img.b64, mediaType:img.mediaType, prompt:promptText, schema })
   });
   if(!res.ok){
-    let msg = 'APIエラー ('+res.status+')';
+    let msg = t('api_error', res.status);
     try{ const e=await res.json(); if(e.error?.message||e.error) msg=e.error?.message||e.error; }catch(_){}
     throw new Error(msg);
   }
@@ -1219,27 +1365,27 @@ async function callClaudeVision(img, mode='photo'){
   const txt = (data.content||[]).filter(b=>b.type==='text').map(b=>b.text).join('');
   let parsed;
   try{ parsed = JSON.parse(txt); }
-  catch(_){ const m=txt.match(/\{[\s\S]*\}/); if(m) parsed=JSON.parse(m[0]); else throw new Error('応答を解析できませんでした'); }
+  catch(_){ const m=txt.match(/\{[\s\S]*\}/); if(m) parsed=JSON.parse(m[0]); else throw new Error(t('parse_failed')); }
   return parsed.medications||[];
 }
 
 function renderScanResult(meds){
-  if(!meds.length){ $('#scanResult').innerHTML='<div class="ai-result">お薬情報を読み取れませんでした。別の写真でお試しください。</div>'; return; }
+  if(!meds.length){ $('#scanResult').innerHTML=`<div class="ai-result">${t('scan_no_result')}</div>`; return; }
   window._scanMeds = meds;
   $('#scanResult').innerHTML = `
     <div class="ai-result">
-      <div style="font-weight:700;margin-bottom:8px">${meds.length}件のお薬を読み取りました</div>
+      <div style="font-weight:700;margin-bottom:8px">${t('scan_result_count', meds.length)}</div>
       ${meds.map((m,i)=>{
         const times = (m.timings||[]).map(t=>SLOTS.find(s=>s.key===t)?.label).filter(Boolean).join('・');
         return `<div style="padding:8px 0;border-top:1px solid var(--line)">
           <label style="display:flex;gap:8px;align-items:flex-start;cursor:pointer">
             <input type="checkbox" class="scanpick" data-i="${i}" checked style="margin-top:5px">
             <div><div style="font-weight:600">${esc(m.name)}</div>
-            <div class="muted">${[MEAL_LABEL[m.meal],m.dose,times].filter(Boolean).join(' / ')||'詳細なし'}</div>
+            <div class="muted">${[MEAL_LABEL[m.meal],m.dose,times].filter(Boolean).join(' / ')||t('scan_no_detail')}</div>
             ${m.note?`<div class="muted">📝 ${esc(m.note)}</div>`:''}</div>
           </label></div>`;
       }).join('')}
-      <button class="btn" id="importScanBtn" style="margin-top:12px">選択したお薬を登録する</button>
+      <button class="btn" id="importScanBtn" style="margin-top:12px">${t('scan_import_btn')}</button>
     </div>`;
   $('#importScanBtn').onclick = importScanned;
 }
@@ -1249,12 +1395,12 @@ function importScanned(){
   picks.forEach(i=>{
     const m = window._scanMeds[i];
     const timings = (m.timings||[]).filter(t=>['morning','noon','evening','bed'].includes(t));
-    state.meds.push({ id:uid(), name:m.name||'お薬', dose:m.dose||'', meal:['none','before','after','between'].includes(m.meal)?m.meal:'none', timings: timings.length?timings:['morning'], note:m.note||'' });
+    state.meds.push({ id:uid(), name:m.name||t('default_med_name'), dose:m.dose||'', meal:['none','before','after','between'].includes(m.meal)?m.meal:'none', timings: timings.length?timings:['morning'], note:m.note||'' });
     count++;
   });
   saveLocal(); renderMedList(); renderToday(); closeModal('scanModal'); postLineSchedule();
   switchTab('meds');
-  toast(`${count}件のお薬を登録しました`);
+  toast(t('toast_imported', count));
 }
 
 /* ============================================================
@@ -1271,7 +1417,7 @@ function initGoogleAuth(){
       client_id: cfg.googleId,
       scope: GOOGLE_SCOPES,
       callback: async (resp)=>{
-        if(resp.error){ toast('ログインに失敗しました'); return; }
+        if(resp.error){ toast(t('toast_login_failed')); return; }
         accessToken = resp.access_token;
         gTokenExp = Date.now() + ((Number(resp.expires_in)||3600) * 1000) - 60000; // 1分の余裕
         saveGTok();
@@ -1281,8 +1427,8 @@ function initGoogleAuth(){
   }catch(e){ console.warn(e); }
 }
 function googleSignIn(){
-  if(!cfg.googleId){ toast('先にGoogleクライアントIDを設定してください'); switchTab('account'); return; }
-  if(!tokenClient){ initGoogleAuth(); if(!tokenClient){ toast('Google認証を初期化できませんでした'); return; } }
+  if(!cfg.googleId){ toast(t('toast_set_clientid')); switchTab('account'); return; }
+  if(!tokenClient){ initGoogleAuth(); if(!tokenClient){ toast(t('toast_auth_init_failed')); return; } }
   tokenClient.requestAccessToken({prompt:'consent'});
 }
 // Googleトークン＋プロフィールをlocalStorageへ保存（画面遷移やPWA再起動でも維持）
@@ -1312,7 +1458,7 @@ async function afterSignIn(){
     user = await r.json();
     saveGTok();
     updateAcctUI();
-    toast('ログインしました');
+    toast(t('toast_logged_in'));
     await findOrCreateSheet();
     await cloudLoad();
     // 既存の連携済みユーザーの自己修復：端末に連携があればクラウドにも反映する
@@ -1322,21 +1468,21 @@ async function afterSignIn(){
       saveLocal();
     }
     updateLineUI();   // ログイン後に LINE連携済み表示を確実に反映（問題1の修正）
-  }catch(e){ toast('プロフィール取得に失敗しました'); }
+  }catch(e){ toast(t('toast_profile_failed')); }
 }
 function updateAcctUI(){
   const box = $('#acctBox');
   const banner = $('#loginBanner');
   if(user){
-    box.innerHTML = `<img src="${user.picture||''}" alt=""><span>${esc((user.name||'').split(' ')[0]||'同期中')}</span>`;
-    $('#acctDetail').innerHTML = `<b>${esc(user.name||'')}</b><br>${esc(user.email||'')}<br><span class="muted">Googleドライブに同期中 ☁️</span>`;
+    box.innerHTML = `<img src="${user.picture||''}" alt=""><span>${esc((user.name||'').split(' ')[0]||t('acct_syncing_short'))}</span>`;
+    $('#acctDetail').innerHTML = `<b>${esc(user.name||'')}</b><br>${esc(user.email||'')}<br><span class="muted">${t('acct_syncing')}</span>`;
     $('#signinArea').style.display='none';
     $('#syncArea').style.display='block';
     if(banner) banner.style.display='none';
   }else{
-    box.innerHTML = `<button class="ghost-btn" id="headerSignBtn">ログイン</button>`;
+    box.innerHTML = `<button class="ghost-btn" id="headerSignBtn">${t('login')}</button>`;
     $('#headerSignBtn').onclick = googleSignIn;
-    $('#acctDetail').textContent='未ログインです。データはこの端末にのみ保存されます。';
+    $('#acctDetail').textContent=t('acct_notloggedin');
     $('#signinArea').style.display='block';
     $('#syncArea').style.display='none';
     if(banner) banner.style.display='flex';
@@ -1408,7 +1554,7 @@ async function cloudLoad(){
         // state（reminders）が変わったので、LINE通知サーバー(KV)も最新内容で上書き同期する。
         // これをしないと KV に古い／空のリマインダーが残り続ける。
         if(cfg.lineUserId) postLineSchedule();
-        toast('クラウドから読み込みました');
+        toast(t('toast_cloud_loaded'));
       } else {
         await cloudSave();
       }
@@ -1419,7 +1565,7 @@ function googleSignOut(){
   if(accessToken && typeof google!=='undefined' && google.accounts){ try{ google.accounts.oauth2.revoke(accessToken); }catch(_){} }
   accessToken=null; gTokenExp=0; user=null; sheetId=null;
   try{ localStorage.removeItem(GTOK_KEY); }catch(_){}
-  updateAcctUI(); toast('ログアウトしました');
+  updateAcctUI(); toast(t('toast_logged_out'));
 }
 
 /* ============================================================
@@ -1427,15 +1573,11 @@ function googleSignOut(){
    ============================================================ */
 $('#googleSignBtn').onclick = googleSignIn;
 $('#signOutBtn').onclick = googleSignOut;
-$('#syncNowBtn').onclick = async ()=>{ if(!accessToken){toast('ログインしてください');return;} await cloudSave(); toast('同期しました'); };
-$('#exportBtn').onclick = ()=>{
-  const blob = new Blob([JSON.stringify(state,null,2)],{type:'application/json'});
-  const a = document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='medinote_backup.json'; a.click();
-};
+$('#syncNowBtn').onclick = async ()=>{ if(!accessToken){toast(t('toast_login_req'));return;} await cloudSave(); toast(t('toast_synced')); };
 $('#resetBtn').onclick = ()=>{
-  if(!confirm('すべてのお薬・記録を削除します。よろしいですか？')) return;
+  if(!confirm(t('confirm_reset'))) return;
   state = {meds:[],logs:{},reminders:[],settings:{notif:false,snooze:true,snoozeMin:10}};
-  saveLocal(); renderAll(); toast('削除しました');
+  saveLocal(); renderAll(); toast(t('toast_deleted'));
 };
 
 /* ============================================================
@@ -1451,8 +1593,21 @@ $$('.modal').forEach(m=> m.addEventListener('click', e=>{ if(e.target===m){ m.cl
 function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
 function renderAll(){ renderToday(); renderMedList(); renderReminders(); }
 
+// 言語切り替えドロップダウンの配線
+function wireLangSwitcher(){
+  const btn = $('#langBtn'), menu = $('#langMenu');
+  if(!btn || !menu) return;
+  btn.onclick = (e)=>{ e.stopPropagation(); menu.classList.toggle('open'); };
+  menu.querySelectorAll('[data-lang]').forEach(b=>{
+    b.onclick = ()=>{ menu.classList.remove('open'); setLang(b.getAttribute('data-lang')); };
+  });
+  document.addEventListener('click', (e)=>{ if(!$('#langWrap').contains(e.target)) menu.classList.remove('open'); });
+}
+
 function init(){
   loadLocal();
+  setLang(cfg.lang || 'ja');   // 保存済み言語を適用（静的テキスト・SLOTS/MEAL_LABEL も同期）
+  wireLangSwitcher();
   restoreGTok();   // 保存済みGoogleトークンを復元（PWA再起動・画面遷移でもログイン維持）
   updateAcctUI();
   renderAll();
@@ -1492,7 +1647,6 @@ async function setupPWA(){
       if(e.data && e.data.type==='open-today') switchTab('today');
     });
     await navigator.serviceWorker.ready;
-    updatePermPrompt();
     // 服薬時刻の通知を予約（対応ブラウザのみバックグラウンド配信）
     scheduleReminders();
   }catch(err){ console.warn('SW登録に失敗:', err); }
@@ -1514,7 +1668,6 @@ function armAutoPermission(){
     cleanup();
     const ok = await requestNotifPermission();
     if(ok){ state.settings.notif = true; saveLocal(); renderReminders(); scheduleReminders(); }
-    updatePermPrompt();
   }
   evs.forEach(ev=> document.addEventListener(ev, handler, {passive:true}));
 }
