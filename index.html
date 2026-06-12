@@ -836,15 +836,13 @@ function handleLineRedirect(){
   const p = new URLSearchParams(location.search);
   const id = p.get('line');
   if(!id) return;
-  cfg.lineUserId = id;
-  cfg.lineName = p.get('lineName') || '';
-  saveCfg();
+  setLineLink(id, p.get('lineName') || '');
   // URLからパラメータを除去
   p.delete('line'); p.delete('lineName');
   const clean = location.pathname + (p.toString()?('?'+p.toString()):'') + location.hash;
   history.replaceState(null, '', clean);
   toast('LINE連携が完了しました');
-  postLineSchedule();
+  postLineSchedule({authoritative:true});
 }
 // LINE通知のスケジュールを組み立てる
 // お薬が登録されている各時間帯を、その枠の時刻（リマインダー設定 or 既定時刻）で通知する
@@ -875,6 +873,20 @@ async function postLineSchedule(opts){
     return res.ok;
   }catch(_){ return false; }
 }
+// LINE連携情報を cfg（端末ローカル）と state.line（クラウド同期対象）の両方へ保存する。
+// state.line に入れることで、Googleドライブ経由で別端末や再ログイン時にも連携状態を復元できる。
+function setLineLink(userId, name){
+  cfg.lineUserId = userId; cfg.lineName = name || ''; saveCfg();
+  state.line = { userId, name: cfg.lineName };
+  saveLocal();   // localStorage 保存＋（ログイン中なら）クラウド(Sheet)へも同期
+  updateLineUI();
+}
+function clearLineLink(){
+  cfg.lineUserId = ''; cfg.lineName = ''; saveCfg();
+  state.line = null;
+  saveLocal();
+  updateLineUI();
+}
 function updateLineUI(){
   const linked = !!cfg.lineUserId;
   const d = $('#lineDetail'); const la = $('#lineLinkArea'); const lk = $('#lineLinkedArea');
@@ -893,8 +905,8 @@ let linkPollTimer = null;
 // 連携が完了したときの共通処理（postMessage／ポーリングどちらからでも呼ばれる）
 function onLineLinked(userId, name){
   if(!userId) return;
-  cfg.lineUserId = userId; cfg.lineName = name || ''; saveCfg();
-  updateLineUI(); postLineSchedule(); toast('LINE連携が完了しました');
+  setLineLink(userId, name);   // cfg＋state.line に保存し UI 更新（クラウド同期対象）
+  postLineSchedule({authoritative:true}); toast('LINE連携が完了しました');
   if(linkPollTimer){ clearInterval(linkPollTimer); linkPollTimer = null; }
 }
 if($('#lineLinkBtn')) $('#lineLinkBtn').onclick = ()=>{
@@ -936,7 +948,7 @@ window.addEventListener('message', (e)=>{
 });
 if($('#lineUnlinkBtn')) $('#lineUnlinkBtn').onclick = ()=>{
   if(!confirm('LINE連携を解除しますか？')) return;
-  cfg.lineUserId=''; cfg.lineName=''; saveCfg(); updateLineUI(); toast('LINE連携を解除しました');
+  clearLineLink(); toast('LINE連携を解除しました');
 };
 // 通知許可をユーザー操作（タップ）の中で要求する（iOS必須）
 async function requestNotifPermission(){
@@ -1303,6 +1315,13 @@ async function afterSignIn(){
     toast('ログインしました');
     await findOrCreateSheet();
     await cloudLoad();
+    // 既存の連携済みユーザーの自己修復：端末に連携があればクラウドにも反映する
+    // （これまで lineUserId はクラウド未同期だったため、次回以降の他端末復元を可能にする）
+    if(cfg.lineUserId && (!state.line || state.line.userId !== cfg.lineUserId)){
+      state.line = { userId: cfg.lineUserId, name: cfg.lineName||'' };
+      saveLocal();
+    }
+    updateLineUI();   // ログイン後に LINE連携済み表示を確実に反映（問題1の修正）
   }catch(e){ toast('プロフィール取得に失敗しました'); }
 }
 function updateAcctUI(){
@@ -1358,12 +1377,26 @@ async function cloudLoad(){
     const cell = d.values?.[0]?.[0];
     if(cell){
       const remote = JSON.parse(cell);
+      // クラウドに保存された LINE連携情報を端末に復元（別端末・再ログインでも連携状態が戻る）。
+      // 端末に連携が無いときだけ復元し、この端末で行った連携/解除を上書きしない。
+      if(remote.line && remote.line.userId && !cfg.lineUserId){
+        cfg.lineUserId = remote.line.userId;
+        cfg.lineName = remote.line.name || '';
+        saveCfg();
+        updateLineUI();
+        postLineSchedule();
+      }
       // クラウド側を採用（簡易マージ：登録数が多い方を優先）
       const localCount = state.meds.length + Object.keys(state.logs).length;
       const remoteCount = (remote.meds?.length||0) + Object.keys(remote.logs||{}).length;
       if(remoteCount >= localCount){
         const prevReminders = state.reminders || [];
+        const prevLine = state.line;
         state = Object.assign({meds:[],logs:{},reminders:[],settings:state.settings}, remote);
+        // この端末で連携済みなら state.line を失わないよう保持（古いクラウドデータで消えるのを防ぐ）
+        if(!state.line && (prevLine || cfg.lineUserId)){
+          state.line = prevLine || { userId: cfg.lineUserId, name: cfg.lineName||'' };
+        }
         // クラウド側の reminders が空なのに手元に設定がある場合は、手元を保持する。
         // （シートに空データが残っていると、起動のたびに通知設定が消えるのを防ぐ）
         if((!state.reminders || !state.reminders.length) && prevReminders.length){
