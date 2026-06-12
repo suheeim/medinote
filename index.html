@@ -439,11 +439,10 @@
 
     <div style="font-size:.82rem;font-weight:600;color:var(--ink-soft);margin-bottom:6px" data-i18n="scan_step2">② 写真の取得元</div>
     <div style="display:flex;gap:10px">
-      <button type="button" class="btn sec" id="cameraBtn" style="flex:1" data-i18n="scan_camera">📷 カメラで撮影</button>
-      <button type="button" class="btn sec" id="albumBtn" style="flex:1" data-i18n="scan_album">🖼️ アルバムから選択</button>
+      <button type="button" class="btn sec" id="pickPhotoBtn" style="flex:1" data-i18n="scan_pick">📷 写真を選ぶ</button>
     </div>
-    <input id="scanFileCamera" type="file" accept="image/*" capture="environment" style="display:none">
-    <input id="scanFileAlbum" type="file" accept="image/*" style="display:none">
+    <!-- capture を付けないことで iOS のネイティブ選択（写真を撮る／フォトライブラリ／ファイル）を表示 -->
+    <input id="scanFile" type="file" accept="image/*" style="display:none">
     <div id="scanPreview"></div>
     <button class="btn" id="runScanBtn" style="margin-top:12px;display:none" data-i18n="scan_run">🔍 AIで読み取る</button>
     <div id="scanResult"></div>
@@ -513,7 +512,7 @@ const I18N = {
     scan_modal_title:'📷 写真からお薬を読み取り',
     scan_desc:'読み取る写真の種類と取得元を選んでください。AIが内容を読み取ります。',
     scan_step1:'① 読み取る写真の種類', scan_mode_photo:'💊 薬の写真', scan_mode_list:'📋 薬一覧のテキスト',
-    scan_step2:'② 写真の取得元', scan_camera:'📷 カメラで撮影', scan_album:'🖼️ アルバムから選択', scan_run:'🔍 AIで読み取る',
+    scan_step2:'② 写真の取得元', scan_pick:'📷 写真を選ぶ', scan_run:'🔍 AIで読み取る',
     med_add_default:'お薬を追加',
     // 動的
     date_today:'今日', date_yesterday:'昨日', date_tomorrow:'明日',
@@ -591,7 +590,7 @@ const I18N = {
     scan_modal_title:'📷 사진에서 약 읽기',
     scan_desc:'읽을 사진의 종류와 가져올 곳을 선택하세요. AI가 내용을 읽습니다.',
     scan_step1:'① 읽을 사진의 종류', scan_mode_photo:'💊 약 사진', scan_mode_list:'📋 약 목록 텍스트',
-    scan_step2:'② 사진 가져올 곳', scan_camera:'📷 카메라로 촬영', scan_album:'🖼️ 앨범에서 선택', scan_run:'🔍 AI로 읽기',
+    scan_step2:'② 사진 가져올 곳', scan_pick:'📷 사진 선택', scan_run:'🔍 AI로 읽기',
     med_add_default:'약 추가',
     // 동적
     date_today:'오늘', date_yesterday:'어제', date_tomorrow:'내일',
@@ -1248,7 +1247,7 @@ $('#closeScanBtn').onclick = ()=>closeModal('scanModal');
 function resetScan(){
   scanImage=null; scanMode='photo';
   $('#scanPreview').innerHTML=''; $('#scanResult').innerHTML=''; $('#runScanBtn').style.display='none';
-  $('#scanFileCamera').value=''; $('#scanFileAlbum').value='';
+  $('#scanFile').value='';
   $$('#scanMode .chip').forEach(c=>c.classList.toggle('on', c.dataset.mode==='photo'));
 }
 
@@ -1257,8 +1256,7 @@ $$('#scanMode .chip').forEach(c=> c.onclick=()=>{
   $$('#scanMode .chip').forEach(x=>x.classList.toggle('on', x===c));
 });
 
-$('#cameraBtn').onclick = ()=> $('#scanFileCamera').click();
-$('#albumBtn').onclick  = ()=> $('#scanFileAlbum').click();
+$('#pickPhotoBtn').onclick = ()=> $('#scanFile').click();
 
 function handleScanFile(e){
   const file = e.target.files[0]; if(!file) return;
@@ -1272,8 +1270,7 @@ function handleScanFile(e){
   };
   reader.readAsDataURL(file);
 }
-$('#scanFileCamera').onchange = handleScanFile;
-$('#scanFileAlbum').onchange  = handleScanFile;
+$('#scanFile').onchange = handleScanFile;
 
 $('#runScanBtn').onclick = async ()=>{
   if(!scanImage) return;
