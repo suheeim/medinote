@@ -1,5 +1,7 @@
-// Vercel Cron が毎分呼び出す。各ユーザーの服薬時刻が来ていれば LINE にプッシュ送信
+// cron-job.org が30分ごとに呼び出す。各ユーザーの服薬時刻が来ていれば LINE にプッシュ送信
 // GET /api/cron
+// ※ cron は cron-job.org の1ジョブのみ（30分間隔・*/30）。Vercel Cron は Hobby だと1日1回しか
+//   動かないため使わない。WINDOW は cron間隔(30分)＋遅延ジッタを必ずカバーする値にすること。
 import { kv } from './_kv.js';
 
 const SLOT_LABEL = { morning: '朝', noon: '昼', evening: '夜', bed: '寝る前' };
@@ -21,7 +23,10 @@ export default async function handler(req, res){
       const local = new Date(nowUtc - tzOffset * 60000); // ローカル壁時計を UTC として扱う
       const nowMin = local.getUTCHours() * 60 + local.getUTCMinutes();
       const dayKey = local.toISOString().slice(0,10);
-      const WINDOW = 15; // 服薬時刻から何分以内なら送信するか（cron間隔より広めに）
+      // 服薬時刻から何分以内なら送信するか。cron は30分間隔なので、時刻直後の tick を逃すと
+      // 次の tick は最大約30分後になる。これ＋遅延ジッタを吸収するため 35 分に設定。
+      // （二重送信は下の dedupeKey で防止されるので広めでも安全）
+      const WINDOW = 35;
 
       for(const r of sched.reminders){
         const mm = /^(\d{1,2}):(\d{2})$/.exec(r.time || '');

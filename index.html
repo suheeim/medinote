@@ -1358,9 +1358,19 @@ async function cloudLoad(){
       const localCount = state.meds.length + Object.keys(state.logs).length;
       const remoteCount = (remote.meds?.length||0) + Object.keys(remote.logs||{}).length;
       if(remoteCount >= localCount){
+        const prevReminders = state.reminders || [];
         state = Object.assign({meds:[],logs:{},reminders:[],settings:state.settings}, remote);
+        // クラウド側の reminders が空なのに手元に設定がある場合は、手元を保持する。
+        // （シートに空データが残っていると、起動のたびに通知設定が消えるのを防ぐ）
+        if((!state.reminders || !state.reminders.length) && prevReminders.length){
+          state.reminders = prevReminders;
+          cloudSave();   // シート側の空データも手元の設定で上書きして整合させる
+        }
         localStorage.setItem(LS_KEY, JSON.stringify(state));
         renderAll();
+        // state（reminders）が変わったので、LINE通知サーバー(KV)も最新内容で上書き同期する。
+        // これをしないと KV に古い／空のリマインダーが残り続ける。
+        if(cfg.lineUserId) postLineSchedule();
         toast('クラウドから読み込みました');
       } else {
         await cloudSave();
