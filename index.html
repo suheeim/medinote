@@ -857,15 +857,19 @@ function lineReminders(){
   return Object.entries(map).map(([slot,time])=>({ slot, time }));
 }
 // 服薬スケジュールをサーバーに送信
-async function postLineSchedule(){
+// opts.authoritative=true … ユーザーの明示操作（追加・編集・削除）。空送信でも全削除を許可。
+//   起動時・クラウド同期からの自動送信は false（既定）。空送信では既存KVを消さない。
+async function postLineSchedule(opts){
   if(!cfg.lineUserId) return;
+  const authoritative = !!(opts && opts.authoritative);
   try{
     const res = await fetch(VERCEL_BASE + '/api/schedule', {
       method:'POST', headers:{'content-type':'application/json'},
       body: JSON.stringify({
         userId: cfg.lineUserId,
         tzOffset: new Date().getTimezoneOffset(),
-        reminders: lineReminders()
+        reminders: lineReminders(),
+        authoritative
       })
     });
     return res.ok;
@@ -997,14 +1001,14 @@ $('#saveRemindBtn').onclick = ()=>{
   const data = { time:$('#rTime').value, slot:$('#rSlot').value, methods:['browser'] };
   if(editingRemindId){ const r=state.reminders.find(x=>x.id===editingRemindId); Object.assign(r,data); }
   else{ data.id=uid(); data.lastFired=''; state.reminders.push(data); }
-  saveLocal(); renderReminders(); closeModal('remindModal'); scheduleReminders(); postLineSchedule();
+  saveLocal(); renderReminders(); closeModal('remindModal'); scheduleReminders(); postLineSchedule({authoritative:true});
   if(!state.settings.notif) toast('保存しました（通知を有効にしてください）');
   else toast('保存しました');
 };
 $('#deleteRemindBtn').onclick = ()=>{
   if(!confirm('このリマインダーを削除しますか？')) return;
   state.reminders = state.reminders.filter(r=>r.id!==editingRemindId);
-  saveLocal(); renderReminders(); closeModal('remindModal'); scheduleReminders(); postLineSchedule();
+  saveLocal(); renderReminders(); closeModal('remindModal'); scheduleReminders(); postLineSchedule({authoritative:true});
 };
 $('#closeRemindBtn').onclick = ()=>closeModal('remindModal');
 
