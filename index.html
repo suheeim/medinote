@@ -780,7 +780,7 @@ function renderToday(){
       const isDone = log[s.key].includes(m.id);
       const sub = [MEAL_LABEL[m.meal], m.dose].filter(Boolean).join(' ・ ');
       return `<div class="med-row ${isDone?'done':''}" data-mid="${m.id}" data-slot="${s.key}">
-        <div class="info"><div class="nm">${esc(m.name)}</div>${sub?`<div class="sub">${esc(sub)}</div>`:''}</div>
+        <div class="info"><div class="nm">${medKind(m)==='supple'?'🌿':'💊'} ${esc(m.name)}</div>${sub?`<div class="sub">${esc(sub)}</div>`:''}</div>
         <button class="dose-btn ${isDone?'on':''}">${isDone?t('dose_done'):t('dose_take')}</button>
       </div>`;
     }).join('');
