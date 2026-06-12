@@ -57,11 +57,11 @@
   header.app .right{display:flex;align-items:center;gap:10px}
   .langwrap{position:relative}
   .lang-btn{background:rgba(255,255,255,.16);color:#fff;border-radius:999px;padding:6px 11px;font-size:.95rem;font-weight:700;line-height:1}
-  .lang-menu{position:absolute;top:calc(100% + 6px);right:0;background:#fff;color:var(--ink);border-radius:12px;box-shadow:0 8px 24px rgba(0,0,0,.18);overflow:hidden;display:none;z-index:50;min-width:140px}
+  .lang-menu{position:absolute;top:calc(100% + 6px);right:0;background:#fff;color:var(--ink);border-radius:12px;box-shadow:0 8px 24px rgba(0,0,0,.18);overflow:hidden;display:none;z-index:50}
   .lang-menu.open{display:block}
-  .lang-menu button{display:flex;align-items:center;gap:8px;width:100%;padding:11px 14px;font-size:.92rem;font-weight:600;color:var(--ink);text-align:left}
+  .lang-menu button{display:flex;align-items:center;justify-content:center;width:100%;padding:9px 14px;font-size:1.25rem;line-height:1;color:var(--ink)}
   .lang-menu button:hover{background:#f1f6f4}
-  .lang-menu button.on{background:#eaf5f1;color:var(--brand-dark)}
+  .lang-menu button.on{background:#eaf5f1}
 
   main{max-width:760px;margin:0 auto;padding:16px 14px 30px}
   .view{display:none;animation:fade .25s ease}
@@ -114,6 +114,9 @@
   .slot.supple .slot-head{background:#f1f8f3}
   .group-head{display:flex;align-items:center;gap:7px;font-weight:700;color:var(--ink-soft);font-size:.9rem;margin:6px 2px 9px}
   .group-head.supple{margin-top:18px}
+  /* お薬とサプリを1枠内で区切る仕切り線 */
+  .slot-divider{height:1px;background:var(--line);margin:8px 0}
+  .slot-divider + .med-row{border-top:none}
   .slot-foot{padding:0 14px 12px}
   .btn-all{width:100%;background:var(--brand-soft);color:var(--brand-dark);font-weight:700;border-radius:11px;padding:11px;border:1px solid #cfe6df}
   .btn-all.done{background:#eef2f1;color:var(--ink-soft);border-color:var(--line)}
@@ -225,10 +228,10 @@
   <div class="logo"><span class="pill">💊</span> <span data-i18n="brand">わたしの薬ノート</span></div>
   <div class="right">
     <div class="langwrap" id="langWrap">
-      <button class="lang-btn" id="langBtn" aria-label="Language">🇯🇵 ▾</button>
+      <button class="lang-btn" id="langBtn" aria-label="Language">🇯🇵</button>
       <div class="lang-menu" id="langMenu">
-        <button type="button" data-lang="ja">🇯🇵 日本語</button>
-        <button type="button" data-lang="ko">🇰🇷 한국어</button>
+        <button type="button" data-lang="ja" aria-label="日本語">🇯🇵</button>
+        <button type="button" data-lang="ko" aria-label="한국어">🇰🇷</button>
       </div>
     </div>
     <div class="acct" id="acctBox">
@@ -292,30 +295,14 @@
       <button class="btn sm" id="addRemindBtn" data-i18n="add">＋ 追加</button>
     </div>
     <div id="remindList"></div>
-    <div class="banner" style="margin-top:6px">
-      <span>ℹ️</span>
-      <div data-i18n="remind_info">ブラウザ通知はこのページを開いている間に動作します。</div>
-    </div>
   </section>
 
   <!-- ========== 病院用まとめ ========== -->
   <section class="view" id="view-hospital">
     <div class="section-title"><h1 data-i18n="hosp_title">病院用まとめ</h1></div>
     <div class="card">
-      <h2 data-i18n-html="hosp_status">服薬状況（過去<span id="rangeDays">14</span>日間）</h2>
-      <div class="stat-grid">
-        <div class="stat"><b id="statRate">—</b><span data-i18n="hosp_avg">平均服薬率</span></div>
-        <div class="stat"><b id="statMeds">—</b><span data-i18n="hosp_regmeds">登録中のお薬</span></div>
-      </div>
-    </div>
-    <div class="card">
       <h2 data-i18n="hosp_medlist">お薬一覧</h2>
       <div id="hospMeds"></div>
-    </div>
-    <div class="card">
-      <h2 data-i18n="hosp_rate_bymed">服薬率（お薬別）</h2>
-      <table class="sum"><thead><tr><th data-i18n="th_med">お薬</th><th style="width:120px" data-i18n="th_rate">服薬率</th></tr></thead>
-        <tbody id="hospTable"></tbody></table>
     </div>
     <button class="btn sec" id="printBtn" data-i18n="print_btn">🖨 この内容を印刷 / PDF保存</button>
   </section>
@@ -671,7 +658,7 @@ function applyStaticI18n(){
   document.querySelectorAll('[data-i18n-ph]').forEach(el=>{ el.setAttribute('placeholder', t(el.getAttribute('data-i18n-ph'))); });
 }
 function updateLangUI(){
-  const btn = $('#langBtn'); if(btn) btn.textContent = (lang==='ko'?'🇰🇷':'🇯🇵') + ' ▾';
+  const btn = $('#langBtn'); if(btn) btn.textContent = (lang==='ko'?'🇰🇷':'🇯🇵');
   document.querySelectorAll('#langMenu [data-lang]').forEach(b=> b.classList.toggle('on', b.getAttribute('data-lang')===lang));
 }
 function setLang(l){
@@ -778,53 +765,47 @@ function renderToday(){
   const wrap = $('#slots'); wrap.innerHTML='';
   let total=0, done=0;
 
-  function buildSlot(s, meds, kind){
-    if(meds.length===0) return;
-    total += meds.length;
-    const doneCount = meds.filter(m=>log[s.key].includes(m.id)).length;
+  // 1つの時間帯（朝/昼/夜/寝る前）を1枠で表示。お薬とサプリは仕切り線で区切り、見出しは付けない。
+  function buildSlot(s){
+    const medItems  = medsForSlot(s.key,'med');
+    const suppItems = medsForSlot(s.key,'supple');
+    const all = [...medItems, ...suppItems];
+    if(all.length===0) return;
+    total += all.length;
+    const doneCount = all.filter(m=>log[s.key].includes(m.id)).length;
     done += doneCount;
-    const allDone = doneCount===meds.length;
+    const allDone = doneCount===all.length;
+
+    const rows = (meds)=> meds.map(m=>{
+      const isDone = log[s.key].includes(m.id);
+      const sub = [MEAL_LABEL[m.meal], m.dose].filter(Boolean).join(' ・ ');
+      return `<div class="med-row ${isDone?'done':''}" data-mid="${m.id}" data-slot="${s.key}">
+        <div class="info"><div class="nm">${esc(m.name)}</div>${sub?`<div class="sub">${esc(sub)}</div>`:''}</div>
+        <button class="dose-btn ${isDone?'on':''}">${isDone?t('dose_done'):t('dose_take')}</button>
+      </div>`;
+    }).join('');
+
+    // お薬とサプリが両方ある場合は仕切り線で区切る（見出しなし）
+    const body = (medItems.length && suppItems.length)
+      ? rows(medItems) + `<div class="slot-divider"></div>` + rows(suppItems)
+      : rows(all);
 
     const el = document.createElement('div');
-    el.className = 'slot '+s.cls+(kind==='supple'?' supple':'');
+    el.className = 'slot '+s.cls;
     el.innerHTML = `
       <div class="slot-head">
         <div class="icon">${s.icon}</div>
         <div class="ttl">${s.label}</div>
-        <div class="cnt">${doneCount}/${meds.length} ${t('unit_done')}</div>
+        <div class="cnt">${doneCount}/${all.length} ${t('unit_done')}</div>
       </div>
-      <div class="slot-body">
-        ${meds.map(m=>{
-          const isDone = log[s.key].includes(m.id);
-          const sub = [MEAL_LABEL[m.meal], m.dose].filter(Boolean).join(' ・ ');
-          return `<div class="med-row ${isDone?'done':''}" data-mid="${m.id}" data-slot="${s.key}">
-            <div class="info"><div class="nm">${esc(m.name)}</div>${sub?`<div class="sub">${esc(sub)}</div>`:''}</div>
-            <button class="dose-btn ${isDone?'on':''}">${isDone?t('dose_done'):t('dose_take')}</button>
-          </div>`;
-        }).join('')}
-      </div>
+      <div class="slot-body">${body}</div>
       <div class="slot-foot">
-        <button class="btn-all ${allDone?'done':''}" data-allslot="${s.key}" data-kind="${kind}">${allDone?t('all_done'):t('take_all')}</button>
+        <button class="btn-all ${allDone?'done':''}" data-allslot="${s.key}">${allDone?t('all_done'):t('take_all')}</button>
       </div>`;
     wrap.appendChild(el);
   }
 
-  const medSlots    = SLOTS.filter(s=> medsForSlot(s.key,'med').length>0);
-  const suppleSlots = SLOTS.filter(s=> medsForSlot(s.key,'supple').length>0);
-
-  // お薬（上）
-  if(medSlots.length && suppleSlots.length){
-    const hd = document.createElement('div'); hd.className='group-head';
-    hd.innerHTML = `<span>💊</span> ${t('group_med')}`; wrap.appendChild(hd);
-  }
-  medSlots.forEach(s=> buildSlot(s, medsForSlot(s.key,'med'), 'med'));
-
-  // サプリメント（下・別枠）
-  if(suppleSlots.length){
-    const hd = document.createElement('div'); hd.className='group-head supple';
-    hd.innerHTML = `<span>🌿</span> ${t('group_supple')}`; wrap.appendChild(hd);
-    suppleSlots.forEach(s=> buildSlot(s, medsForSlot(s.key,'supple'), 'supple'));
-  }
+  SLOTS.forEach(s=> buildSlot(s));
 
   if(total===0){
     wrap.innerHTML = `<div class="card empty"><div class="big">💊</div><div>${t('empty_today')}</div>
@@ -842,7 +823,7 @@ function renderToday(){
     r.onclick = ()=> toggleDose(ds, r.dataset.slot, r.dataset.mid);
   });
   wrap.querySelectorAll('[data-allslot]').forEach(b=>{
-    b.onclick = ()=> completeSlot(ds, b.dataset.allslot, b.dataset.kind);
+    b.onclick = ()=> completeSlot(ds, b.dataset.allslot);   // 枠内すべて（お薬＋サプリ）をまとめて切替
   });
 
   renderOverdue(ds);
@@ -1245,43 +1226,16 @@ async function scheduleReminders(){
    病院用まとめ
    ============================================================ */
 function renderHospital(){
-  const DAYS = 14;
-  $('#rangeDays').textContent = DAYS;
-  $('#statMeds').textContent = state.meds.length;
-
-  // お薬一覧
+  // お薬一覧（サプリメントは除外し、お薬のみ表示）
+  const meds = state.meds.filter(m=> medKind(m)==='med');
   const hm = $('#hospMeds');
-  if(state.meds.length===0){ hm.innerHTML=`<div class="muted">${t('hosp_no_meds')}</div>`; }
-  else hm.innerHTML = state.meds.map(m=>{
-    const times = m.timings.map(t=>SLOTS.find(s=>s.key===t)?.label).filter(Boolean).join('・');
+  if(meds.length===0){ hm.innerHTML=`<div class="muted">${t('hosp_no_meds')}</div>`; }
+  else hm.innerHTML = meds.map(m=>{
+    const times = m.timings.map(tk=>SLOTS.find(s=>s.key===tk)?.label).filter(Boolean).join('・');
     return `<div style="padding:9px 0;border-bottom:1px solid var(--line)">
       <div style="font-weight:600">${esc(m.name)}</div>
       <div class="muted">${[MEAL_LABEL[m.meal],m.dose,times].filter(Boolean).join(' / ')}</div></div>`;
   }).join('');
-
-  // 服薬率計算（過去DAYS日）
-  let totalExpected=0, totalTaken=0;
-  const perMed = {};
-  state.meds.forEach(m=> perMed[m.id]={exp:0,taken:0,name:m.name});
-  for(let i=0;i<DAYS;i++){
-    const d=new Date(); d.setDate(d.getDate()-i); const ds=fmtDate(d);
-    const log = state.logs[ds];
-    state.meds.forEach(m=>{
-      m.timings.forEach(t=>{
-        totalExpected++; perMed[m.id].exp++;
-        if(log && log[t] && log[t].includes(m.id)){ totalTaken++; perMed[m.id].taken++; }
-      });
-    });
-  }
-  const rate = totalExpected? Math.round(totalTaken/totalExpected*100):0;
-  $('#statRate').textContent = totalExpected? rate+'%':'—';
-
-  const tb = $('#hospTable');
-  tb.innerHTML = state.meds.length? state.meds.map(m=>{
-    const p = perMed[m.id]; const r = p.exp? Math.round(p.taken/p.exp*100):0;
-    return `<tr><td>${esc(m.name)}</td>
-      <td><div style="display:flex;align-items:center;gap:8px"><div class="adh-bar" style="flex:1"><i style="width:${r}%"></i></div><span style="font-size:.78rem;white-space:nowrap">${r}%</span></div></td></tr>`;
-  }).join('') : `<tr><td colspan="2" class="muted">${t('no_data')}</td></tr>`;
 }
 $('#printBtn').onclick = ()=>window.print();
 
