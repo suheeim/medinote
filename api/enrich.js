@@ -16,7 +16,7 @@ const WEB_SEARCH_TOOL = 'web_search_20250305'; // Haiku対応の標準版。
 //     code_execution ツールが必須なので、Haiku を使う本用途では 20250305 を採用。
 const MAX_WEB_SEARCHES = 3;                  // 1製品あたりの検索回数上限（無駄打ち防止）
 const MAX_TURNS = 4;                         // pause_turn の継続上限
-const CACHE_PREFIX = 'enrich:v1:';
+const CACHE_PREFIX = 'enrich:v2:'; // v2: 用法回数→timings変換 と 確定キャッシュ条件の見直し。v1の不正結果を無効化
 const CACHE_TTL = 60 * 60 * 24 * 180;        // 確認できた結果：180日（製品情報はそう頻繁に変わらない）
 const MEALS = ['none', 'before', 'after', 'between'];
 const SLOTS = ['morning', 'noon', 'evening', 'bed'];
@@ -36,9 +36,19 @@ function buildPrompt(name) {
 製品名: ${name}
 
 【調査方法】
-- web_search ツールで、メーカー公式サイト または 一次情報源（医薬品添付文書・インタビューフォーム・メーカーの製品ページ等）を探す。
+- web_search ツールで、まず メーカー公式サイト・医薬品添付文書・インタビューフォーム 等の一次情報源を優先的に探す。
+  通販サイトや個人ブログ（lipscosme 等）の記載は最後の手段とし、公式情報が取れたらそちらを採用する。
 - そこで実際に確認できた情報「だけ」を抽出する。
 - 確認できない項目は推測やうろ覚えで埋めず、必ず空にする。
+
+【服用回数 → timings（服用スロット）への変換 ※重要】
+用法欄に「1日◯回」と書かれていれば、特定のスロット指定（朝食後 等）が無くても次の標準対応で timings を必ず埋めること。
+これは推測ではなく「1日◯回」という確認済み情報の機械的な展開なので、回数が確認できたら空にしないこと。
+- 1日3回 → ["morning","noon","evening"]（朝・昼・夜）
+- 1日2回 → ["morning","evening"]（朝・夜）
+- 「朝食後」「就寝前」等の明示があればそのスロットに従う（例: 1日1回 就寝前 → ["bed"]）
+- 1日1回 で時間帯の指定が無い場合のみ timings は空配列のまま（朝などを勝手に補わない）
+- source には、その服用回数/用法を確認したページのURLを必ず入れること。
 
 【出力形式】
 最後に、説明文なしで次の JSON オブジェクトだけを出力してください（マークダウンのコードフェンス不要）。
@@ -167,10 +177,12 @@ export default async function handler(req, res) {
     const obj = extractJson(data && data.content);
     const result = buildResult(obj);
 
-    // 3) 確認できた結果（出典のある項目が1つ以上）だけ KV に保存。
-    //    見つからなかった結果・パース不能はキャッシュせず、次回スキャン時に再検索する。
-    const anySource = !!(result.dose.source || result.meal.source || result.timings.source || result.note.source);
-    if (anySource) {
+    // 3) 用法用量として価値のある結果（dose または timings の出典あり）だけ KV に確定保存する。
+    //    note だけ取れた／全項目空 のような貧弱な結果はキャッシュしない。
+    //    （以前は note だけでもキャッシュしてしまい、空の用法用量が180日固定される不具合があった）
+    //    キャッシュしなければ次回スキャンで再検索され、良い run を引けるチャンスが残る。
+    const hasCore = !!(result.dose.source || result.timings.source);
+    if (hasCore) {
       try { await kv.set(cacheKey, result, { ex: CACHE_TTL }); } catch (_) { /* 保存失敗は無視 */ }
     }
 
