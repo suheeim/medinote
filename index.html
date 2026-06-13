@@ -1448,8 +1448,20 @@ function renderScanResult(meds){
       ${meds.map((m,i)=>`<div id="scanrow-${i}" style="padding:8px 0;border-top:1px solid var(--line)">${scanRowHtml(m,i)}</div>`).join('')}
       <button class="btn" id="importScanBtn" style="margin-top:12px">${t('scan_import_btn')}</button>
     </div>`;
-  $('#importScanBtn').onclick = importScanned;
-  if(anyEnrich) runEnrichment(meds);   // OCR表示後、不足製品だけ非同期で補完
+  const importBtn = $('#importScanBtn');
+  importBtn.onclick = importScanned;
+  // 補完が終わるまで取り込みを禁止する。
+  //   理由：runEnrichment はWeb検索を伴い1製品あたり数十秒かかる。完了前に取り込むと
+  //   dose/meal/timings が空のまま確定し、importScanned 側の timings 既定値 ['morning'] が
+  //   適用されて「全製品 朝だけ」になってしまう（＝今回の不具合の原因）。
+  if(anyEnrich){
+    importBtn.disabled = true;
+    importBtn.innerHTML = `<span class="spinner"></span> ${t('enrich_searching')}`;
+    runEnrichment(meds).finally(()=>{
+      const b = $('#importScanBtn');
+      if(b){ b.disabled = false; b.innerHTML = t('scan_import_btn'); }
+    });
+  }
 }
 function importScanned(){
   const picks = [...$$('.scanpick:checked')].map(c=>+c.dataset.i);
