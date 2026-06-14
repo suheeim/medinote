@@ -139,6 +139,9 @@
   .chips{display:flex;flex-wrap:wrap;gap:8px}
   .chip{padding:8px 13px;border-radius:999px;border:1.5px solid var(--line);background:#fff;font-size:.86rem;font-weight:600;color:var(--ink-soft)}
   .chip.on{background:var(--brand);border-color:var(--brand);color:#fff}
+  /* スキャン結果の行内・種別トグル（少し小さめ） */
+  .kindpick{padding:4px 11px;font-size:.78rem;cursor:pointer}
+  .scan-kind-hint{font-size:.7rem;color:var(--muted);margin:8px 0 2px 28px}
   .row2{display:flex;gap:10px}
   .row2>*{flex:1;min-width:0}
 
@@ -537,6 +540,7 @@ const I18N = {
     parse_failed:'応答を解析できませんでした',
     scan_no_result:'お薬情報を読み取れませんでした。別の写真でお試しください。',
     scan_result_count:(n)=>`${n}件のお薬を読み取りました`, scan_no_detail:'詳細なし',
+    scan_kind_hint:'種類はAIの推定です。登録前に各項目で お薬／サプリ をご確認ください（未選択のままでも登録できます）。',
     scan_import_btn:'選択したお薬を登録する', default_med_name:'お薬',
     toast_imported:(n)=>`${n}件のお薬を登録しました`, api_error:(s)=>`APIエラー (${s})`,
     toast_logged_out:'ログアウトしました', toast_login_req:'ログインしてください', toast_synced:'同期しました',
@@ -555,8 +559,8 @@ const I18N = {
     notif_body_pending:(l,c,n)=>`${l}のお薬 ${c}件：${n}`, notif_body_time:(l)=>`${l}のお薬の時間です`,
     notif_resnooze_title:'🔔 わたしの薬ノート — 再通知',
     notif_resnooze_body:(n)=>`まだ服用していないお薬があります：${n}`,
-    scan_prompt_list:'この画像はお薬の一覧表・処方箋・お薬手帳のテキスト部分など、複数のお薬名が文字で並んでいるリストです。記載されている文字情報を読み取り、お薬ごとに名前・1回の服用量・食事との関係・服用タイミング（朝/昼/夜/寝る前）・注意事項を抽出してください。表や箇条書きの各行を1つのお薬として扱ってください。日本語で記載してください。読み取れない項目は空文字または空配列にしてください。',
-    scan_prompt_photo:'この画像（お薬の袋・包装・PTPシート・薬そのものの写真など）から、写っているお薬の情報を読み取ってください。お薬ごとに名前・1回の服用量・食事との関係・服用タイミング（朝/昼/夜/寝る前）・注意事項を抽出してください。日本語で記載してください。読み取れない項目は空文字または空配列にしてください。'
+    scan_prompt_list:'この画像はお薬の一覧表・処方箋・お薬手帳のテキスト部分など、複数のお薬名が文字で並んでいるリストです。記載されている文字情報を読み取り、お薬ごとに名前・種別・1回の服用量・食事との関係・服用タイミング（朝/昼/夜/寝る前）・注意事項を抽出してください。表や箇条書きの各行を1つのお薬として扱ってください。種別(kind)は、医薬品表示（第1〜3類医薬品/指定医薬部外品など）があれば"med"、栄養機能食品/機能性表示食品/健康機能食品/サプリメント/supplementなどの表示があれば"supple"、判断できなければ空文字""（推測しない）。日本語で記載してください。読み取れない項目は空文字または空配列にしてください。',
+    scan_prompt_photo:'この画像（お薬の袋・包装・PTPシート・薬そのものの写真など）から、写っているお薬の情報を読み取ってください。お薬ごとに名前・種別・1回の服用量・食事との関係・服用タイミング（朝/昼/夜/寝る前）・注意事項を抽出してください。種別(kind)は、医薬品表示（第1〜3類医薬品/指定医薬部外品など）があれば"med"、栄養機能食品/機能性表示食品/健康機能食品/サプリメント/supplementなどの表示があれば"supple"、判断できなければ空文字""（推測しない）。日本語で記載してください。読み取れない項目は空文字または空配列にしてください。'
   },
   ko: {
     brand:'내 약 노트', login:'로그인',
@@ -615,6 +619,7 @@ const I18N = {
     parse_failed:'응답을 해석할 수 없습니다',
     scan_no_result:'약 정보를 읽지 못했습니다. 다른 사진으로 시도해 보세요.',
     scan_result_count:(n)=>`약 ${n}건을 읽었습니다`, scan_no_detail:'상세 없음',
+    scan_kind_hint:'종류는 AI 추정입니다. 등록 전 각 항목에서 약／영양제를 확인하세요(미선택 상태로도 등록할 수 있습니다).',
     scan_import_btn:'선택한 약 등록하기', default_med_name:'약',
     toast_imported:(n)=>`약 ${n}건을 등록했습니다`, api_error:(s)=>`API 오류 (${s})`,
     toast_logged_out:'로그아웃했습니다', toast_login_req:'로그인해 주세요', toast_synced:'동기화했습니다',
@@ -633,8 +638,8 @@ const I18N = {
     notif_body_pending:(l,c,n)=>`${l} 약 ${c}건: ${n}`, notif_body_time:(l)=>`${l} 약 드실 시간이에요`,
     notif_resnooze_title:'🔔 내 약 노트 — 다시 알림',
     notif_resnooze_body:(n)=>`아직 복용하지 않은 약이 있어요: ${n}`,
-    scan_prompt_list:'이 이미지는 약 목록표·처방전·약 수첩의 텍스트 부분 등 여러 약 이름이 글자로 나열된 목록입니다. 적힌 문자 정보를 읽어, 약마다 이름·1회 복용량·식사와의 관계·복용 시점(아침/점심/저녁/자기 전)·주의사항을 추출하세요. 표나 항목의 각 줄을 하나의 약으로 취급하세요. 한국어로 작성해 주세요. 읽을 수 없는 항목은 빈 문자열 또는 빈 배열로 두세요.',
-    scan_prompt_photo:'이 이미지(약 봉투·포장·PTP 시트·약 자체의 사진 등)에서 보이는 약 정보를 읽어 주세요. 약마다 이름·1회 복용량·식사와의 관계·복용 시점(아침/점심/저녁/자기 전)·주의사항을 추출하세요. 한국어로 작성해 주세요. 읽을 수 없는 항목은 빈 문자열 또는 빈 배열로 두세요.'
+    scan_prompt_list:'이 이미지는 약 목록표·처방전·약 수첩의 텍스트 부분 등 여러 약 이름이 글자로 나열된 목록입니다. 적힌 문자 정보를 읽어, 약마다 이름·종류·1회 복용량·식사와의 관계·복용 시점(아침/점심/저녁/자기 전)·주의사항을 추출하세요. 표나 항목의 각 줄을 하나의 약으로 취급하세요. 종류(kind)는 의약품 표시(제1~3류 의약품/지정의약외품 등)가 있으면 "med", 영양기능식품/기능성표시식품/건강기능식품/서플리먼트/supplement 등의 표시가 있으면 "supple", 판단할 수 없으면 빈 문자열 ""(추측하지 않음). 한국어로 작성해 주세요. 읽을 수 없는 항목은 빈 문자열 또는 빈 배열로 두세요.',
+    scan_prompt_photo:'이 이미지(약 봉투·포장·PTP 시트·약 자체의 사진 등)에서 보이는 약 정보를 읽어 주세요. 약마다 이름·종류·1회 복용량·식사와의 관계·복용 시점(아침/점심/저녁/자기 전)·주의사항을 추출하세요. 종류(kind)는 의약품 표시(제1~3류 의약품/지정의약외품 등)가 있으면 "med", 영양기능식품/기능성표시식품/건강기능식품/서플리먼트/supplement 등의 표시가 있으면 "supple", 판단할 수 없으면 빈 문자열 ""(추측하지 않음). 한국어로 작성해 주세요. 읽을 수 없는 항목은 빈 문자열 또는 빈 배열로 두세요.'
   }
 };
 function t(key, ...args){
@@ -1294,11 +1299,12 @@ async function callClaudeVision(img, mode='photo'){
     properties:{
       medications:{ type:'array', items:{ type:'object', properties:{
         name:{type:'string', description:'お薬の名前（規格・mgも含む）'},
+        kind:{type:'string', enum:['med','supple',''], description:'種別。医薬品表示(第1〜3類医薬品/指定医薬部外品等)なら"med"、栄養機能食品/機能性表示食品/健康機能食品(韓:건강기능식품)/サプリメント/supplementなら"supple"、パッケージから判断できなければ空文字""（推測しない）'},
         dose:{type:'string', description:'1回の服用量。例: 1錠, 2カプセル'},
         meal:{type:'string', enum:['none','before','after','between'], description:'食事との関係'},
         timings:{type:'array', items:{type:'string', enum:['morning','noon','evening','bed']}, description:'服用タイミング'},
         note:{type:'string', description:'補足・注意事項（なければ空文字）'}
-      }, required:['name','dose','meal','timings','note'], additionalProperties:false } }
+      }, required:['name','kind','dose','meal','timings','note'], additionalProperties:false } }
     },
     required:['medications'], additionalProperties:false
   };
@@ -1320,24 +1326,41 @@ async function callClaudeVision(img, mode='photo'){
   return parsed.medications||[];
 }
 
+// OCRが出した kind を 'med'|'supple'|'' に正規化（不明や想定外は ''＝未選択）
+function scanKind(m){ return (m && (m.kind==='med'||m.kind==='supple')) ? m.kind : ''; }
+
 function renderScanResult(meds){
   if(!meds.length){ $('#scanResult').innerHTML=`<div class="ai-result">${t('scan_no_result')}</div>`; return; }
   window._scanMeds = meds;
   $('#scanResult').innerHTML = `
     <div class="ai-result">
       <div style="font-weight:700;margin-bottom:8px">${t('scan_result_count', meds.length)}</div>
+      <div class="scan-kind-hint" style="margin-left:0">${t('scan_kind_hint')}</div>
       ${meds.map((m,i)=>{
         const times = (m.timings||[]).map(t=>SLOTS.find(s=>s.key===t)?.label).filter(Boolean).join('・');
+        const k = scanKind(m);
         return `<div style="padding:8px 0;border-top:1px solid var(--line)">
           <label style="display:flex;gap:8px;align-items:flex-start;cursor:pointer">
             <input type="checkbox" class="scanpick" data-i="${i}" checked style="margin-top:5px">
             <div><div style="font-weight:600">${esc(m.name)}</div>
             <div class="muted">${[MEAL_LABEL[m.meal],m.dose,times].filter(Boolean).join(' / ')||t('scan_no_detail')}</div>
             ${m.note?`<div class="muted">📝 ${esc(m.note)}</div>`:''}</div>
-          </label></div>`;
+          </label>
+          <div class="scan-kind" data-i="${i}" style="display:flex;gap:6px;margin:6px 0 0 28px">
+            <div class="chip kindpick ${k==='med'?'on':''}" data-i="${i}" data-k="med">${t('kind_med')}</div>
+            <div class="chip kindpick ${k==='supple'?'on':''}" data-i="${i}" data-k="supple">${t('kind_supple')}</div>
+          </div>
+        </div>`;
       }).join('')}
       <button class="btn" id="importScanBtn" style="margin-top:12px">${t('scan_import_btn')}</button>
     </div>`;
+  // 種別チップ：同じ行で排他選択。選択済みを再タップで未選択へ戻せる（推測で決めつけない）
+  $$('#scanResult .kindpick').forEach(chip=> chip.onclick = ()=>{
+    const wrap = chip.parentElement;
+    const wasOn = chip.classList.contains('on');
+    wrap.querySelectorAll('.chip').forEach(c=> c.classList.remove('on'));
+    if(!wasOn) chip.classList.add('on');
+  });
   $('#importScanBtn').onclick = importScanned;
 }
 function importScanned(){
@@ -1346,7 +1369,8 @@ function importScanned(){
   picks.forEach(i=>{
     const m = window._scanMeds[i];
     const timings = (m.timings||[]).filter(t=>['morning','noon','evening','bed'].includes(t));
-    state.meds.push({ id:uid(), name:m.name||t('default_med_name'), dose:m.dose||'', meal:['none','before','after','between'].includes(m.meal)?m.meal:'none', timings: timings, note:m.note||'' });
+    const kind = $(`#scanResult .scan-kind[data-i="${i}"] .chip.on`)?.dataset.k || '';
+    state.meds.push({ id:uid(), name:m.name||t('default_med_name'), kind, dose:m.dose||'', meal:['none','before','after','between'].includes(m.meal)?m.meal:'none', timings: timings, note:m.note||'' });
     count++;
   });
   saveLocal(); renderMedList(); renderToday(); closeModal('scanModal'); postLineSchedule();
