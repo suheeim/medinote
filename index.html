@@ -176,13 +176,7 @@
   .preview{position:relative;border-radius:14px;overflow:hidden;margin-top:12px}
   .preview img{width:100%;display:block;max-height:280px;object-fit:cover}
   .spinner{display:inline-block;width:18px;height:18px;border:3px solid rgba(255,255,255,.4);border-top-color:#fff;border-radius:50%;animation:spin .8s linear infinite;vertical-align:-3px}
-  .spinner-sm{display:inline-block;width:12px;height:12px;border:2px solid rgba(90,90,120,.3);border-top-color:var(--brand);border-radius:50%;animation:spin .8s linear infinite;vertical-align:-2px}
   @keyframes spin{to{transform:rotate(360deg)}}
-  .enrich-badge{display:inline-flex;align-items:center;gap:3px;font-size:.66rem;font-weight:700;color:#2563eb;background:#eef4ff;border:1px solid #cfe0ff;border-radius:999px;padding:1px 7px;margin-left:6px;text-decoration:none;white-space:nowrap;vertical-align:1px}
-  .enrich-badge:active{opacity:.7}
-  .enrich-status{font-size:.72rem;color:var(--muted);margin-top:3px}
-  .enrich-status.notfound{color:#b45309}
-  .enrich-disclaimer{font-size:.72rem;line-height:1.5;color:#92400e;background:#fffbeb;border:1px solid #fde68a;border-radius:10px;padding:9px 11px;margin-bottom:10px}
   .ai-result{border:1px solid var(--line);border-radius:13px;padding:12px;margin-top:10px;background:#fafcfb}
 
   /* hospital */
@@ -545,10 +539,6 @@ const I18N = {
     scan_result_count:(n)=>`${n}件のお薬を読み取りました`, scan_no_detail:'詳細なし',
     scan_import_btn:'選択したお薬を登録する', default_med_name:'お薬',
     toast_imported:(n)=>`${n}件のお薬を登録しました`, api_error:(s)=>`APIエラー (${s})`,
-    enrich_auto:'公式サイトより自動取得', enrich_source:'出典を開く',
-    enrich_searching:'公式情報を検索中…', enrich_not_found:'公式情報が見つかりませんでした',
-    enrich_failed:'自動取得に失敗しました',
-    enrich_disclaimer:'ℹ️ 一部の項目はAIが公式サイトを参照して自動取得した「候補」です。正確性は保証されません。保存前に必ず内容をご確認のうえ、実際の用法用量は製品の表示・医師薬剤師の指示に従ってください。',
     toast_logged_out:'ログアウトしました', toast_login_req:'ログインしてください', toast_synced:'同期しました',
     confirm_reset:'すべてのお薬・記録を削除します。よろしいですか？',
     toast_login_failed:'ログインに失敗しました', toast_set_clientid:'先にGoogleクライアントIDを設定してください',
@@ -627,10 +617,6 @@ const I18N = {
     scan_result_count:(n)=>`약 ${n}건을 읽었습니다`, scan_no_detail:'상세 없음',
     scan_import_btn:'선택한 약 등록하기', default_med_name:'약',
     toast_imported:(n)=>`약 ${n}건을 등록했습니다`, api_error:(s)=>`API 오류 (${s})`,
-    enrich_auto:'공식 사이트에서 자동 취득', enrich_source:'출처 열기',
-    enrich_searching:'공식 정보 검색 중…', enrich_not_found:'공식 정보를 찾지 못했습니다',
-    enrich_failed:'자동 취득에 실패했습니다',
-    enrich_disclaimer:'ℹ️ 일부 항목은 AI가 공식 사이트를 참조해 자동 취득한 「후보」입니다. 정확성은 보장되지 않습니다. 저장 전 반드시 내용을 확인하시고, 실제 용법·용량은 제품 표시 및 의사·약사의 지시에 따르세요.',
     toast_logged_out:'로그아웃했습니다', toast_login_req:'로그인해 주세요', toast_synced:'동기화했습니다',
     confirm_reset:'모든 약·기록을 삭제합니다. 계속할까요?',
     toast_login_failed:'로그인에 실패했습니다', toast_set_clientid:'먼저 Google 클라이언트 ID를 설정하세요',
@@ -1334,134 +1320,25 @@ async function callClaudeVision(img, mode='photo'){
   return parsed.medications||[];
 }
 
-// 補完対象の判定：dose / meal / timings のうち1つでも空なら対象（noteは判定に含めない）
-// meal は 'none'（指定なし）も「未指定」とみなして補完対象に含める
-function needsEnrich(m){
-  const doseEmpty    = !m.dose || !String(m.dose).trim();
-  const mealEmpty    = !m.meal || m.meal === 'none';
-  const timingsEmpty = !Array.isArray(m.timings) || m.timings.length === 0;
-  return doseEmpty || mealEmpty || timingsEmpty;
-}
-
-// 「公式サイトより自動取得」バッジ＋出典リンク
-function enrichBadge(src){
-  return `<a class="enrich-badge" href="${esc(src)}" target="_blank" rel="noopener" title="${esc(t('enrich_source'))}">🌐 ${esc(t('enrich_auto'))}</a>`;
-}
-
-// 取得結果を med に流し込む：空の項目だけ・確認できた(source有り)項目だけ。
-// 返り値 filled = { dose?:src, meal?:src, timings?:src, note?:src }（自動入力した欄→出典）
-function applyEnrich(m, r){
-  const filled = {};
-  if((!m.dose || !String(m.dose).trim()) && r.dose && r.dose.source && r.dose.value){
-    m.dose = r.dose.value; filled.dose = r.dose.source;
-  }
-  if((!m.meal || m.meal === 'none') && r.meal && r.meal.source && r.meal.value && r.meal.value !== 'none'){
-    m.meal = r.meal.value; filled.meal = r.meal.source;
-  }
-  if((!Array.isArray(m.timings) || !m.timings.length) && r.timings && r.timings.source && Array.isArray(r.timings.value) && r.timings.value.length){
-    m.timings = r.timings.value.slice(); filled.timings = r.timings.source;
-  }
-  if((!m.note || !String(m.note).trim()) && r.note && r.note.source && r.note.value){
-    m.note = r.note.value; filled.note = r.note.source;
-  }
-  return filled;
-}
-
-async function enrichProduct(name){
-  try{
-    const res = await fetch(VERCEL_BASE + '/api/enrich',{
-      method:'POST',
-      headers:{ 'content-type':'application/json' },
-      body: JSON.stringify({ name })
-    });
-    if(!res.ok) return null;          // 503(一時障害)等はスキップ＝空のまま
-    const data = await res.json();
-    return data.result || null;
-  }catch(_){ return null; }
-}
-
-// 同時実行数を制限して /api/enrich を順次呼ぶ（暴発防止）
-async function runEnrichment(meds){
-  const targets = meds.map((m,i)=>({m,i})).filter(x=>needsEnrich(x.m));
-  if(!targets.length) return;
-  const LIMIT = 3;
-  let idx = 0;
-  async function worker(){
-    while(idx < targets.length){
-      const { m, i } = targets[idx++];
-      m._enrich = { status:'pending', filled:{} };
-      updateScanRow(i);
-      let result = null;
-      try{ result = await enrichProduct(m.name); }catch(_){ result = null; }
-      if(!result){
-        m._enrich = { status:'error', filled:{} };
-      }else{
-        const filled = applyEnrich(m, result);
-        m._enrich = { status: Object.keys(filled).length ? 'done' : 'none', filled };
-      }
-      updateScanRow(i);
-    }
-  }
-  await Promise.all(Array.from({ length: Math.min(LIMIT, targets.length) }, worker));
-}
-
-// 1製品分の行HTML（補完バッジ・状態表示込み）
-function scanRowHtml(m, i, checked=true){
-  const f = (m._enrich && m._enrich.filled) || {};
-  const status = m._enrich && m._enrich.status;
-  const times = (m.timings||[]).map(tk=>SLOTS.find(s=>s.key===tk)?.label).filter(Boolean).join('・');
-  const bits = [];
-  if(MEAL_LABEL[m.meal]) bits.push(esc(MEAL_LABEL[m.meal]) + (f.meal ? enrichBadge(f.meal) : ''));
-  if(m.dose)            bits.push(esc(m.dose)             + (f.dose ? enrichBadge(f.dose) : ''));
-  if(times)             bits.push(esc(times)              + (f.timings ? enrichBadge(f.timings) : ''));
-  const detail = bits.join(' / ') || esc(t('scan_no_detail'));
-  let statusLine = '';
-  if(status === 'pending')   statusLine = `<div class="enrich-status"><span class="spinner-sm"></span> ${esc(t('enrich_searching'))}</div>`;
-  else if(status === 'none') statusLine = `<div class="enrich-status notfound">${esc(t('enrich_not_found'))}</div>`;
-  else if(status === 'error')statusLine = `<div class="enrich-status notfound">${esc(t('enrich_failed'))}</div>`;
-  return `<label style="display:flex;gap:8px;align-items:flex-start;cursor:pointer">
-      <input type="checkbox" class="scanpick" data-i="${i}" ${checked?'checked':''} style="margin-top:5px">
-      <div style="flex:1"><div style="font-weight:600">${esc(m.name)}</div>
-      <div class="muted">${detail}</div>
-      ${m.note?`<div class="muted">📝 ${esc(m.note)}${f.note ? enrichBadge(f.note) : ''}</div>`:''}
-      ${statusLine}</div>
-    </label>`;
-}
-
-// 1行だけ再描画（チェック状態は保持）
-function updateScanRow(i){
-  const el = document.getElementById('scanrow-' + i);
-  if(!el) return;
-  const cb = el.querySelector('.scanpick');
-  const checked = cb ? cb.checked : true;
-  el.innerHTML = scanRowHtml(window._scanMeds[i], i, checked);
-}
-
 function renderScanResult(meds){
   if(!meds.length){ $('#scanResult').innerHTML=`<div class="ai-result">${t('scan_no_result')}</div>`; return; }
   window._scanMeds = meds;
-  const anyEnrich = meds.some(needsEnrich);
   $('#scanResult').innerHTML = `
     <div class="ai-result">
       <div style="font-weight:700;margin-bottom:8px">${t('scan_result_count', meds.length)}</div>
-      ${anyEnrich ? `<div class="enrich-disclaimer">${esc(t('enrich_disclaimer'))}</div>` : ''}
-      ${meds.map((m,i)=>`<div id="scanrow-${i}" style="padding:8px 0;border-top:1px solid var(--line)">${scanRowHtml(m,i)}</div>`).join('')}
+      ${meds.map((m,i)=>{
+        const times = (m.timings||[]).map(t=>SLOTS.find(s=>s.key===t)?.label).filter(Boolean).join('・');
+        return `<div style="padding:8px 0;border-top:1px solid var(--line)">
+          <label style="display:flex;gap:8px;align-items:flex-start;cursor:pointer">
+            <input type="checkbox" class="scanpick" data-i="${i}" checked style="margin-top:5px">
+            <div><div style="font-weight:600">${esc(m.name)}</div>
+            <div class="muted">${[MEAL_LABEL[m.meal],m.dose,times].filter(Boolean).join(' / ')||t('scan_no_detail')}</div>
+            ${m.note?`<div class="muted">📝 ${esc(m.note)}</div>`:''}</div>
+          </label></div>`;
+      }).join('')}
       <button class="btn" id="importScanBtn" style="margin-top:12px">${t('scan_import_btn')}</button>
     </div>`;
-  const importBtn = $('#importScanBtn');
-  importBtn.onclick = importScanned;
-  // 補完が終わるまで取り込みを禁止する。
-  //   理由：runEnrichment はWeb検索を伴い1製品あたり数十秒かかる。完了前に取り込むと
-  //   dose/meal/timings が空のまま確定し、importScanned 側の timings 既定値 ['morning'] が
-  //   適用されて「全製品 朝だけ」になってしまう（＝今回の不具合の原因）。
-  if(anyEnrich){
-    importBtn.disabled = true;
-    importBtn.innerHTML = `<span class="spinner"></span> ${t('enrich_searching')}`;
-    runEnrichment(meds).finally(()=>{
-      const b = $('#importScanBtn');
-      if(b){ b.disabled = false; b.innerHTML = t('scan_import_btn'); }
-    });
-  }
+  $('#importScanBtn').onclick = importScanned;
 }
 function importScanned(){
   const picks = [...$$('.scanpick:checked')].map(c=>+c.dataset.i);
@@ -1469,7 +1346,7 @@ function importScanned(){
   picks.forEach(i=>{
     const m = window._scanMeds[i];
     const timings = (m.timings||[]).filter(t=>['morning','noon','evening','bed'].includes(t));
-    state.meds.push({ id:uid(), name:m.name||t('default_med_name'), dose:m.dose||'', meal:['none','before','after','between'].includes(m.meal)?m.meal:'none', timings: timings, note:m.note||'' });
+    state.meds.push({ id:uid(), name:m.name||t('default_med_name'), dose:m.dose||'', meal:['none','before','after','between'].includes(m.meal)?m.meal:'none', timings: timings.length?timings:['morning'], note:m.note||'' });
     count++;
   });
   saveLocal(); renderMedList(); renderToday(); closeModal('scanModal'); postLineSchedule();
