@@ -1346,7 +1346,7 @@ function importScanned(){
   picks.forEach(i=>{
     const m = window._scanMeds[i];
     const timings = (m.timings||[]).filter(t=>['morning','noon','evening','bed'].includes(t));
-    state.meds.push({ id:uid(), name:m.name||t('default_med_name'), dose:m.dose||'', meal:['none','before','after','between'].includes(m.meal)?m.meal:'none', timings: timings.length?timings:['morning'], note:m.note||'' });
+    state.meds.push({ id:uid(), name:m.name||t('default_med_name'), dose:m.dose||'', meal:['none','before','after','between'].includes(m.meal)?m.meal:'none', timings: timings, note:m.note||'' });
     count++;
   });
   saveLocal(); renderMedList(); renderToday(); closeModal('scanModal'); postLineSchedule();
