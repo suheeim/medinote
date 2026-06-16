@@ -936,7 +936,7 @@ $('#saveMedBtn').onclick = ()=>{
   const name = $('#mName').value.trim();
   if(!name){ toast(t('toast_name_req')); return; }
   const timings = [...$$('#mTimings .chip.on')].map(c=>c.dataset.t);
-  if(timings.length===0){ toast(t('toast_timing_req')); return; }
+  // タイミングは必須にしない（読み取れない/未設定のまま空欄でも登録できる）
   const kind = ($('#mKind .chip.on')?.dataset.k)==='supple' ? 'supple' : 'med';
   const data = { name, kind, dose:$('#mDose').value.trim(), meal:$('#mMeal').value, timings, note:$('#mNote').value.trim() };
   if(editingMedId){ const m=state.meds.find(x=>x.id===editingMedId); Object.assign(m,data); }
