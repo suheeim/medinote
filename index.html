@@ -1263,17 +1263,46 @@ $$('#scanMode .chip').forEach(c=> c.onclick=()=>{
 
 $('#pickPhotoBtn').onclick = ()=> $('#scanFile').click();
 
-function handleScanFile(e){
+// 画像を長辺1568pxに縮小し、JPEG品質0.85で圧縮する。
+// VercelのFunction body上限(4.5MB)を超えて413になるのを防ぐ。
+function resizeImageFile(file){
+  return new Promise((resolve, reject)=>{
+    const reader = new FileReader();
+    reader.onerror = ()=> reject(new Error('file read error'));
+    reader.onload = ()=>{
+      const img = new Image();
+      img.onerror = ()=> reject(new Error('image decode error'));
+      img.onload = ()=>{
+        const MAX = 1568;
+        const scale = Math.min(1, MAX / Math.max(img.width, img.height));
+        const w = Math.max(1, Math.round(img.width * scale));
+        const h = Math.max(1, Math.round(img.height * scale));
+        const canvas = document.createElement('canvas');
+        canvas.width = w; canvas.height = h;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, w, h);
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
+        resolve({ dataUrl, mediaType:'image/jpeg', b64: dataUrl.split(',')[1] });
+      };
+      img.src = reader.result;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+async function handleScanFile(e){
   const file = e.target.files[0]; if(!file) return;
-  const reader = new FileReader();
-  reader.onload = ()=>{
-    const dataUrl = reader.result;
-    scanImage = { dataUrl, mediaType:file.type||'image/jpeg', b64: dataUrl.split(',')[1] };
-    $('#scanPreview').innerHTML = `<div class="preview"><img src="${dataUrl}"></div>`;
+  // 縮小・圧縮が終わってからscanImageを確定し、プレビュー/AI読み取りボタンを表示する
+  try{
+    scanImage = await resizeImageFile(file);
+    $('#scanPreview').innerHTML = `<div class="preview"><img src="${scanImage.dataUrl}"></div>`;
     $('#runScanBtn').style.display='flex';
     $('#scanResult').innerHTML='';
-  };
-  reader.readAsDataURL(file);
+  }catch(err){
+    scanImage = null;
+    $('#runScanBtn').style.display='none';
+    $('#scanResult').innerHTML = `<div class="ai-result" style="color:var(--danger)">${esc(t('scan_failed', err.message))}</div>`;
+  }
 }
 $('#scanFile').onchange = handleScanFile;
 
