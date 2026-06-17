@@ -139,9 +139,6 @@
   .chips{display:flex;flex-wrap:wrap;gap:8px}
   .chip{padding:8px 13px;border-radius:999px;border:1.5px solid var(--line);background:#fff;font-size:.86rem;font-weight:600;color:var(--ink-soft)}
   .chip.on{background:var(--brand);border-color:var(--brand);color:#fff}
-  /* スキャン結果の行内・種別トグル（少し小さめ） */
-  .kindpick{padding:4px 11px;font-size:.78rem;cursor:pointer}
-  .scan-kind-hint{font-size:.7rem;color:var(--muted);margin:8px 0 2px 28px}
   .row2{display:flex;gap:10px}
   .row2>*{flex:1;min-width:0}
 
@@ -540,7 +537,6 @@ const I18N = {
     parse_failed:'応答を解析できませんでした',
     scan_no_result:'お薬情報を読み取れませんでした。別の写真でお試しください。',
     scan_result_count:(n)=>`${n}件のお薬を読み取りました`, scan_no_detail:'詳細なし',
-    scan_kind_hint:'種類はAIの推定です。登録前に各項目で お薬／サプリ をご確認ください（未選択のままでも登録できます）。',
     scan_import_btn:'選択したお薬を登録する', default_med_name:'お薬',
     toast_imported:(n)=>`${n}件のお薬を登録しました`, api_error:(s)=>`APIエラー (${s})`,
     toast_logged_out:'ログアウトしました', toast_login_req:'ログインしてください', toast_synced:'同期しました',
@@ -619,7 +615,6 @@ const I18N = {
     parse_failed:'응답을 해석할 수 없습니다',
     scan_no_result:'약 정보를 읽지 못했습니다. 다른 사진으로 시도해 보세요.',
     scan_result_count:(n)=>`약 ${n}건을 읽었습니다`, scan_no_detail:'상세 없음',
-    scan_kind_hint:'종류는 AI 추정입니다. 등록 전 각 항목에서 약／영양제를 확인하세요(미선택 상태로도 등록할 수 있습니다).',
     scan_import_btn:'선택한 약 등록하기', default_med_name:'약',
     toast_imported:(n)=>`약 ${n}건을 등록했습니다`, api_error:(s)=>`API 오류 (${s})`,
     toast_logged_out:'로그아웃했습니다', toast_login_req:'로그인해 주세요', toast_synced:'동기화했습니다',
@@ -1355,19 +1350,14 @@ async function callClaudeVision(img, mode='photo'){
   return parsed.medications||[];
 }
 
-// OCRが出した kind を 'med'|'supple'|'' に正規化（不明や想定外は ''＝未選択）
-function scanKind(m){ return (m && (m.kind==='med'||m.kind==='supple')) ? m.kind : ''; }
-
 function renderScanResult(meds){
   if(!meds.length){ $('#scanResult').innerHTML=`<div class="ai-result">${t('scan_no_result')}</div>`; return; }
   window._scanMeds = meds;
   $('#scanResult').innerHTML = `
     <div class="ai-result">
       <div style="font-weight:700;margin-bottom:8px">${t('scan_result_count', meds.length)}</div>
-      <div class="scan-kind-hint" style="margin-left:0">${t('scan_kind_hint')}</div>
       ${meds.map((m,i)=>{
         const times = (m.timings||[]).map(t=>SLOTS.find(s=>s.key===t)?.label).filter(Boolean).join('・');
-        const k = scanKind(m);
         return `<div style="padding:8px 0;border-top:1px solid var(--line)">
           <label style="display:flex;gap:8px;align-items:flex-start;cursor:pointer">
             <input type="checkbox" class="scanpick" data-i="${i}" checked style="margin-top:5px">
@@ -1375,21 +1365,10 @@ function renderScanResult(meds){
             <div class="muted">${[MEAL_LABEL[m.meal],m.dose,times].filter(Boolean).join(' / ')||t('scan_no_detail')}</div>
             ${m.note?`<div class="muted">📝 ${esc(m.note)}</div>`:''}</div>
           </label>
-          <div class="scan-kind" data-i="${i}" style="display:flex;gap:6px;margin:6px 0 0 28px">
-            <div class="chip kindpick ${k==='med'?'on':''}" data-i="${i}" data-k="med">${t('kind_med')}</div>
-            <div class="chip kindpick ${k==='supple'?'on':''}" data-i="${i}" data-k="supple">${t('kind_supple')}</div>
-          </div>
         </div>`;
       }).join('')}
       <button class="btn" id="importScanBtn" style="margin-top:12px">${t('scan_import_btn')}</button>
     </div>`;
-  // 種別チップ：同じ行で排他選択。選択済みを再タップで未選択へ戻せる（推測で決めつけない）
-  $$('#scanResult .kindpick').forEach(chip=> chip.onclick = ()=>{
-    const wrap = chip.parentElement;
-    const wasOn = chip.classList.contains('on');
-    wrap.querySelectorAll('.chip').forEach(c=> c.classList.remove('on'));
-    if(!wasOn) chip.classList.add('on');
-  });
   $('#importScanBtn').onclick = importScanned;
 }
 function importScanned(){
@@ -1398,7 +1377,8 @@ function importScanned(){
   picks.forEach(i=>{
     const m = window._scanMeds[i];
     const timings = (m.timings||[]).filter(t=>['morning','noon','evening','bed'].includes(t));
-    const kind = $(`#scanResult .scan-kind[data-i="${i}"] .chip.on`)?.dataset.k || '';
+    // 種別は最初に選んだモードで決める（サプリメントモード→supple、処方薬モード→med）
+    const kind = scanMode==='list' ? 'supple' : 'med';
     state.meds.push({ id:uid(), name:m.name||t('default_med_name'), kind, dose:m.dose||'', meal:['none','before','after','between'].includes(m.meal)?m.meal:'none', timings: timings, note:m.note||'' });
     count++;
   });
