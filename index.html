@@ -178,6 +178,14 @@
   .spinner{display:inline-block;width:18px;height:18px;border:3px solid rgba(255,255,255,.4);border-top-color:#fff;border-radius:50%;animation:spin .8s linear infinite;vertical-align:-3px}
   @keyframes spin{to{transform:rotate(360deg)}}
   .ai-result{border:1px solid var(--line);border-radius:13px;padding:12px;margin-top:10px;background:#fafcfb}
+  .md .md-h{font-weight:700;margin:12px 0 6px;line-height:1.4}
+  .md .md-h:first-child{margin-top:0}
+  .md h1.md-h,.md h2.md-h{font-size:1.02rem}
+  .md h3.md-h,.md h4.md-h,.md h5.md-h,.md h6.md-h{font-size:.95rem;color:var(--ink-soft)}
+  .md .md-p{margin:6px 0}
+  .md .md-ul{margin:6px 0;padding-left:1.25em;list-style:disc}
+  .md .md-ul li{margin:3px 0}
+  .md strong{font-weight:700}
 
   /* hospital */
   table.sum{width:100%;border-collapse:collapse;font-size:.85rem}
@@ -1299,8 +1307,8 @@ async function runComboCheck(){
   try{
     const meds = state.meds.map(m=> ({ name:m.name, kind: medKind(m)==='supple'?'supple':'med' }));
     const text = await callClaudeCombo(meds);
-    // 改行を保持して読みやすく表示
-    $('#comboResult').innerHTML = `<div class="ai-result" style="margin-top:14px;white-space:pre-wrap;line-height:1.7">${esc(text)}</div>`;
+    // AIはマークダウンで返すので整形して表示する
+    $('#comboResult').innerHTML = `<div class="ai-result md" style="margin-top:14px;line-height:1.7">${mdToHtml(text)}</div>`;
   }catch(err){
     $('#comboResult').innerHTML = `<div class="ai-result" style="margin-top:14px;color:var(--danger)">${esc(t('combo_failed', err.message))}</div>`;
   }finally{
@@ -1665,6 +1673,32 @@ $$('.modal').forEach(m=> m.addEventListener('click', e=>{ if(e.target===m){ m.cl
    初期化
    ============================================================ */
 function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+// 軽量マークダウン整形（見出し / 太字 / 箇条書きのみ。外部ライブラリ不使用）。
+// 先にHTMLエスケープしてから記法を変換するので安全。
+function mdInline(s){ return esc(s).replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>'); }
+function mdToHtml(text){
+  const lines = String(text==null?'':text).replace(/\r\n?/g,'\n').split('\n');
+  let html='', inList=false;
+  const closeList=()=>{ if(inList){ html+='</ul>'; inList=false; } };
+  lines.forEach(raw=>{
+    const line = raw.trim();
+    let m;
+    if(!line){ closeList(); return; }
+    if((m = line.match(/^(#{1,6})\s+(.*)$/))){
+      closeList();
+      const lv = Math.min(m[1].length, 6);
+      html += `<h${lv} class="md-h">${mdInline(m[2])}</h${lv}>`;
+    }else if((m = line.match(/^[-*●・]\s+(.*)$/))){
+      if(!inList){ html+='<ul class="md-ul">'; inList=true; }
+      html += `<li>${mdInline(m[1])}</li>`;
+    }else{
+      closeList();
+      html += `<p class="md-p">${mdInline(line)}</p>`;
+    }
+  });
+  closeList();
+  return html;
+}
 function renderAll(){ renderToday(); renderMedList(); renderReminders(); }
 
 // 言語切り替えドロップダウンの配線
