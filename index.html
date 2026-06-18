@@ -293,7 +293,8 @@
       <button class="btn sm" id="addMedBtn" data-i18n="add">＋ 追加</button>
     </div>
     <button class="btn sec" id="scanBtn" style="margin-bottom:10px" data-i18n="scan_btn">📷 写真からAIで読み取る</button>
-    <button class="btn sec" id="comboBtn" style="margin-bottom:14px" data-i18n="combo_btn">🤝 飲み合わせをチェック</button>
+    <button class="btn sec" id="comboBtn" style="margin-bottom:10px" data-i18n="combo_btn">🤝 飲み合わせをチェック</button>
+    <button class="btn sec" id="overlapBtn" style="margin-bottom:14px" data-i18n="overlap_btn">🔁 重なりチェック</button>
     <div id="medList"></div>
   </section>
 
@@ -467,6 +468,16 @@
   </div>
 </div>
 
+<!-- ===== 重なりチェック モーダル ===== -->
+<div class="modal" id="overlapModal">
+  <div class="sheet">
+    <div class="grab"></div>
+    <h2 data-i18n="overlap_modal_title">🔁 重なりチェック</h2>
+    <div id="overlapBody"></div>
+    <button class="btn sec sm" id="closeOverlapBtn" style="width:100%;margin-top:10px;border:none;color:var(--ink-soft)" data-i18n="close_btn">閉じる</button>
+  </div>
+</div>
+
 <!-- ===== 飲み合わせチェック 実行前の確認 ===== -->
 <div class="modal" id="comboConfirmModal">
   <div class="sheet">
@@ -526,6 +537,12 @@ const I18N = {
     combo_user_rx:'【処方薬】\n', combo_user_sup:'【サプリメント】\n', combo_none:'（なし）',
     combo_user_ask:'これらの飲み合わせについて、上記の方針にしたがって、やさしい言葉で参考情報を教えてください。',
     combo_system:'あなたは、ユーザーが今使っている薬・サプリの飲み合わせについて、参考情報を提供する役割です。あなたは医師や薬剤師ではなく、診断や最終判断はできません。\n・主に「サプリメントが、処方薬と一緒に摂って注意が必要なものがないか」という観点で見てください。\n・一般的に注意が必要と言われることがある組み合わせがあれば、参考として挙げてください。\n・処方薬同士についても、気づいた点があれば参考として触れてかまいませんが、医師の判断を否定することはしないでください。\n【絶対に守ること】\n・「安全です」「危険です」と断言しないこと。\n・「今すぐやめてください」などと緊急性をあおらないこと。\n・これはあくまで一般的な参考情報であり、100%正確ではないこと、ここで挙がらなくても注意が必要な場合があることを必ず伝えること。\n・複数の病院から処方されている場合、医師がすべての薬を把握していないことがあるため、気になる組み合わせは「処方箋や、薬剤師・医師に確認を」とすすめること。\n・最後に必ず「最終的な判断は、薬剤師・医師にご相談ください」と添えること。\n・専門用語が多くなりすぎないよう、やさしい言葉で書くこと。\n【出力】\n・注意したほうがよい組み合わせがある場合：その組み合わせと、なぜ気をつけるとよいかを、やさしく簡潔に。\n・特に見当たらない場合：「一般的な範囲では、特に大きな注意点は見当たりませんでした」と伝えた上で、上記の「100%ではない・専門家に相談を」を必ず添える。\n日本語で回答してください。',
+    overlap_btn:'🔁 重なりチェック', overlap_modal_title:'🔁 重なりチェック',
+    overlap_intro:'以下の薬・サプリで、成分や働きの重なりがないか確認します。', overlap_empty:'登録されている薬・サプリがありません。',
+    overlap_run:'🔁 チェックする', overlap_checking:'チェック中…',
+    overlap_failed:(m)=>`チェックに失敗しました：${m}`,
+    overlap_user_ask:'これらの中で、同じ成分や似た働きが重複していないか、上記の方針にしたがって、やさしい言葉で教えてください。',
+    overlap_system:'あなたは、ユーザーが今使っている薬・サプリの中で、同じ成分や似た働きが重複していないかを確認し、参考情報を提供する役割です。あなたは医師や薬剤師ではなく、診断や最終判断はできません。\n・目的は、登録中の薬・サプリの中で「同じ成分・似た働きが重複していないか」を確認することです（例：ビタミンCが処方薬と市販サプリで重複、鉄が複数で重複、乳酸菌が複数で重複、タンパク質系が複数 など）。\n【必ず守ること】\n・「危険です」「安全です」と断言しないこと。やわらかい言い方にすること。\n・処方薬が含まれる場合、医師の処方を否定しないこと。\n・これはあくまで一般的な参考情報であり、100%正確とは限らず、ここに出なくても重複がある場合もあること。\n・最後に必ず「最終的な判断は、薬剤師・医師にご相談ください」と添えること。\n・飲み合わせより重大さは軽めなので、注意は少しあっさりめでよいこと。\n・専門用語が多くなりすぎないよう、やさしい言葉で書くこと。\n【出力】\n・重なりがありそうな場合：どの成分・働きが重なっていそうかを、やさしく簡潔に。\n・特に見当たらない場合：「一般的な範囲では、目立った重なりは見当たりませんでした」と伝えた上で、上記の「100%ではない・専門家に相談を」を必ず添える。\nマークダウン（##, ###, -, **）を使ってよいです。日本語で回答してください。',
     remind_title:'リマインダー', remind_info:'ブラウザ通知はこのページを開いている間に動作します。',
     hosp_title:'病院用まとめ', hosp_status:'服薬状況（過去<span id="rangeDays">14</span>日間）',
     hosp_avg:'平均服薬率', hosp_regmeds:'登録中のお薬', hosp_medlist:'お薬一覧',
@@ -614,6 +631,12 @@ const I18N = {
     combo_user_rx:'【처방약】\n', combo_user_sup:'【영양제】\n', combo_none:'（없음）',
     combo_user_ask:'이 약·영양제들의 궁합에 대해, 위 방침에 따라 쉬운 말로 참고 정보를 알려 주세요.',
     combo_system:'당신은 사용자가 지금 사용 중인 약·영양제의 궁합에 대해 참고 정보를 제공하는 역할입니다. 당신은 의사나 약사가 아니며, 진단이나 최종 판단을 할 수 없습니다.\n・주로 "영양제가 처방약과 함께 먹을 때 주의가 필요한 것이 없는지"라는 관점에서 봐 주세요.\n・일반적으로 주의가 필요하다고 알려진 조합이 있으면 참고로 들어 주세요.\n・처방약끼리에 대해서도 눈에 띄는 점이 있으면 참고로 언급해도 되지만, 의사의 판단을 부정하지는 마세요.\n【반드시 지킬 것】\n・"안전합니다" "위험합니다"라고 단언하지 말 것.\n・"지금 당장 중단하세요" 등 긴급성을 부추기지 말 것.\n・이것은 어디까지나 일반적인 참고 정보이며 100% 정확하지 않다는 것, 여기에 나오지 않아도 주의가 필요한 경우가 있다는 것을 반드시 전할 것.\n・여러 병원에서 처방받은 경우 의사가 모든 약을 파악하지 못하는 경우가 있으므로, 신경 쓰이는 조합은 "처방전이나 약사·의사에게 확인을"이라고 권할 것.\n・마지막에 반드시 "최종 판단은 약사·의사와 상담하세요"라고 덧붙일 것.\n・전문 용어가 너무 많아지지 않도록 쉬운 말로 쓸 것.\n【출력】\n・주의하는 편이 좋은 조합이 있는 경우: 그 조합과 왜 주의하면 좋은지를 쉽고 간결하게.\n・특별히 보이지 않는 경우: "일반적인 범위에서는 특별히 큰 주의점은 보이지 않았습니다"라고 전한 뒤, 위의 "100%가 아님·전문가와 상담을"을 반드시 덧붙일 것.\n한국어로 답변해 주세요.',
+    overlap_btn:'🔁 중복 체크', overlap_modal_title:'🔁 중복 체크',
+    overlap_intro:'아래 약·영양제에서 성분이나 작용의 중복이 없는지 확인합니다.', overlap_empty:'등록된 약·영양제가 없습니다.',
+    overlap_run:'🔁 확인하기', overlap_checking:'확인 중…',
+    overlap_failed:(m)=>`확인에 실패했습니다: ${m}`,
+    overlap_user_ask:'이 중에서 같은 성분이나 비슷한 작용이 중복되지 않는지, 위 방침에 따라 쉬운 말로 알려 주세요.',
+    overlap_system:'당신은 사용자가 지금 사용 중인 약·영양제 중에서 같은 성분이나 비슷한 작용이 중복되지 않는지 확인하고 참고 정보를 제공하는 역할입니다. 당신은 의사나 약사가 아니며, 진단이나 최종 판단을 할 수 없습니다.\n・목적은 등록 중인 약·영양제 중에서 "같은 성분·비슷한 작용이 중복되지 않는지"를 확인하는 것입니다(예: 비타민C가 처방약과 시판 영양제에서 중복, 철분이 여러 개 중복, 유산균이 여러 개 중복, 단백질 계열이 여러 개 등).\n【반드시 지킬 것】\n・"위험합니다" "안전합니다"라고 단언하지 말 것. 부드러운 표현을 쓸 것.\n・처방약이 포함된 경우 의사의 처방을 부정하지 말 것.\n・이것은 어디까지나 일반적인 참고 정보이며 100% 정확하지 않을 수 있고, 여기에 나오지 않아도 중복이 있을 수 있다는 것.\n・마지막에 반드시 "최종 판단은 약사·의사와 상담하세요"라고 덧붙일 것.\n・궁합 체크보다 중대성은 가벼우므로 주의는 조금 가볍게 해도 됨.\n・전문 용어가 너무 많아지지 않도록 쉬운 말로 쓸 것.\n【출력】\n・중복이 있어 보이는 경우: 어떤 성분·작용이 겹치는지 쉽고 간결하게.\n・특별히 보이지 않는 경우: "일반적인 범위에서는 눈에 띄는 중복은 보이지 않았습니다"라고 전한 뒤, 위의 "100%가 아님·전문가와 상담을"을 반드시 덧붙일 것.\n마크다운(##, ###, -, **)을 사용해도 됩니다. 한국어로 답변해 주세요.',
     remind_title:'리마인더', remind_info:'브라우저 알림은 이 페이지를 열어 둔 동안 동작합니다.',
     hosp_title:'병원용 요약', hosp_status:'복약 현황(최근 <span id="rangeDays">14</span>일간)',
     hosp_avg:'평균 복약률', hosp_regmeds:'등록된 약', hosp_medlist:'약 목록',
@@ -1316,11 +1339,13 @@ function renderComboList(){
     <button class="btn" id="runComboBtn" style="margin-top:14px">${t('combo_run')}</button>
     <div id="comboResult"></div>`;
   // すぐ送らず、まず注意の確認ポップアップを出す
-  $('#runComboBtn').onclick = ()=> openModal('comboConfirmModal');
+  $('#runComboBtn').onclick = ()=> askCheckConfirm(runComboCheck);
 }
-// 確認ポップアップ：「やめる」は送らず閉じる、「続ける」でAIに送る
-$('#comboCancelBtn').onclick = ()=> closeModal('comboConfirmModal');
-$('#comboProceedBtn').onclick = ()=>{ closeModal('comboConfirmModal'); runComboCheck(); };
+// 飲み合わせ・重なりで共有する確認ポップアップ。続けると保留中のチェックを実行
+let pendingCheck = null;
+function askCheckConfirm(fn){ pendingCheck = fn; openModal('comboConfirmModal'); }
+$('#comboCancelBtn').onclick = ()=>{ pendingCheck = null; closeModal('comboConfirmModal'); };
+$('#comboProceedBtn').onclick = ()=>{ closeModal('comboConfirmModal'); const fn = pendingCheck; pendingCheck = null; if(fn) fn(); };
 
 // 登録済みの薬・サプリの「名前」と「種別」だけをAIに送り、飲み合わせの参考情報を受け取る
 async function runComboCheck(){
@@ -1354,6 +1379,70 @@ async function callClaudeCombo(meds){
     method:'POST',
     headers:{ 'content-type':'application/json' },
     body: JSON.stringify({ system: t('combo_system'), prompt: userText })
+  });
+  if(!res.ok){
+    let msg = t('api_error', res.status);
+    try{ const e=await res.json(); if(e.error?.message||e.error) msg=e.error?.message||e.error; }catch(_){}
+    throw new Error(msg);
+  }
+  const data = await res.json();
+  const txt = (data.content||[]).filter(b=>b.type==='text').map(b=>b.text).join('').trim();
+  if(!txt) throw new Error(t('parse_failed'));
+  return txt;
+}
+
+/* 重なりチェック（成分の重複チェック）。飲み合わせとほぼ同じ作りでプロンプトだけ違う */
+$('#overlapBtn').onclick = ()=>{ renderOverlapList(); openModal('overlapModal'); };
+$('#closeOverlapBtn').onclick = ()=> closeModal('overlapModal');
+
+function renderOverlapList(){
+  const body = $('#overlapBody');
+  if(state.meds.length===0){
+    body.innerHTML = `<p class="muted">${t('overlap_empty')}</p>`;
+    return;
+  }
+  const sorted = [...state.meds].sort((a,b)=> (medKind(a)==='supple'?1:0) - (medKind(b)==='supple'?1:0));
+  body.innerHTML = `
+    <p class="muted" style="margin-bottom:10px">${t('overlap_intro')}</p>
+    <div>${sorted.map(m=>{
+      const supple = medKind(m)==='supple';
+      return `<div style="padding:8px 0;border-top:1px solid var(--line);font-weight:600">${supple?'🌿':'💊'} ${esc(m.name)}</div>`;
+    }).join('')}</div>
+    <button class="btn" id="runOverlapBtn" style="margin-top:14px">${t('overlap_run')}</button>
+    <div id="overlapResult"></div>`;
+  $('#runOverlapBtn').onclick = ()=> askCheckConfirm(runOverlapCheck);
+}
+
+async function runOverlapCheck(){
+  const btn = $('#runOverlapBtn');
+  btn.disabled = true; btn.innerHTML = `<span class="spinner"></span> ${t('overlap_checking')}`;
+  $('#overlapResult').innerHTML = '';
+  try{
+    const meds = state.meds.map(m=> ({ name:m.name, kind: medKind(m)==='supple'?'supple':'med' }));
+    const text = await callClaudeOverlap(meds);
+    $('#overlapResult').innerHTML = `<div class="ai-result md" style="margin-top:14px;line-height:1.7">${mdToHtml(text)}</div>`;
+  }catch(err){
+    $('#overlapResult').innerHTML = `<div class="ai-result" style="margin-top:14px;color:var(--danger)">${esc(t('overlap_failed', err.message))}</div>`;
+  }finally{
+    btn.disabled = false; btn.innerHTML = t('overlap_run');
+  }
+}
+
+async function callClaudeOverlap(meds){
+  const rx = meds.filter(m=>m.kind==='med').map(m=>m.name);
+  const sup = meds.filter(m=>m.kind==='supple').map(m=>m.name);
+  // 飲み合わせと同じく、名前と種別（処方薬／サプリ）だけを送る
+  const userText = [
+    t('combo_user_rx') + (rx.length ? rx.map(n=>'・'+n).join('\n') : t('combo_none')),
+    '',
+    t('combo_user_sup') + (sup.length ? sup.map(n=>'・'+n).join('\n') : t('combo_none')),
+    '',
+    t('overlap_user_ask')
+  ].join('\n');
+  const res = await fetch(VERCEL_BASE + '/api/analyze',{
+    method:'POST',
+    headers:{ 'content-type':'application/json' },
+    body: JSON.stringify({ system: t('overlap_system'), prompt: userText })
   });
   if(!res.ok){
     let msg = t('api_error', res.status);
