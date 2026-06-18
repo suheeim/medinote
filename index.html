@@ -496,6 +496,7 @@ const I18N = {
     today_title:'今日のお薬', today_sub:'服用予定を確認しましょう', ring_achieve:'達成',
     meds_title:'お薬の管理', add:'＋ 追加', scan_btn:'📷 写真からAIで読み取る',
     combo_btn:'🤝 飲み合わせをチェック', combo_modal_title:'🤝 飲み合わせをチェック',
+    combo_intro:'以下の薬・サプリの飲み合わせをチェックします。', combo_empty:'登録されている薬・サプリがありません。',
     remind_title:'リマインダー', remind_info:'ブラウザ通知はこのページを開いている間に動作します。',
     hosp_title:'病院用まとめ', hosp_status:'服薬状況（過去<span id="rangeDays">14</span>日間）',
     hosp_avg:'平均服薬率', hosp_regmeds:'登録中のお薬', hosp_medlist:'お薬一覧',
@@ -575,6 +576,7 @@ const I18N = {
     today_title:'오늘의 약', today_sub:'복용 예정을 확인하세요', ring_achieve:'달성',
     meds_title:'약 관리', add:'＋ 추가', scan_btn:'📷 사진에서 AI로 읽기',
     combo_btn:'🤝 궁합 체크', combo_modal_title:'🤝 궁합 체크',
+    combo_intro:'아래 약·영양제의 궁합을 확인합니다.', combo_empty:'등록된 약·영양제가 없습니다.',
     remind_title:'리마인더', remind_info:'브라우저 알림은 이 페이지를 열어 둔 동안 동작합니다.',
     hosp_title:'병원용 요약', hosp_status:'복약 현황(최근 <span id="rangeDays">14</span>일간)',
     hosp_avg:'평균 복약률', hosp_regmeds:'등록된 약', hosp_medlist:'약 목록',
@@ -1256,9 +1258,25 @@ let scanMode = 'photo';          // 'photo' | 'list'
 $('#scanBtn').onclick = ()=>{ resetScan(); openModal('scanModal'); };
 $('#closeScanBtn').onclick = ()=>closeModal('scanModal');
 
-/* 飲み合わせチェック（今回は空の画面に移動するだけ。中身は次のステップ） */
-$('#comboBtn').onclick = ()=> openModal('comboModal');
+/* 飲み合わせチェック（今回は登録済みの薬・サプリ名の一覧表示まで） */
+$('#comboBtn').onclick = ()=>{ renderComboList(); openModal('comboModal'); };
 $('#closeComboBtn').onclick = ()=> closeModal('comboModal');
+
+function renderComboList(){
+  const body = $('#comboBody');
+  if(state.meds.length===0){
+    body.innerHTML = `<p class="muted">${t('combo_empty')}</p>`;
+    return;
+  }
+  // お薬→サプリの順に並べ、種別アイコン付きで名前だけを一覧表示
+  const sorted = [...state.meds].sort((a,b)=> (medKind(a)==='supple'?1:0) - (medKind(b)==='supple'?1:0));
+  body.innerHTML = `
+    <p class="muted" style="margin-bottom:10px">${t('combo_intro')}</p>
+    <div>${sorted.map(m=>{
+      const supple = medKind(m)==='supple';
+      return `<div style="padding:8px 0;border-top:1px solid var(--line);font-weight:600">${supple?'🌿':'💊'} ${esc(m.name)}</div>`;
+    }).join('')}</div>`;
+}
 function resetScan(){
   scanImage=null; scanMode='photo';
   $('#scanPreview').innerHTML=''; $('#scanResult').innerHTML=''; $('#runScanBtn').style.display='none';
