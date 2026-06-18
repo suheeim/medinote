@@ -284,7 +284,8 @@
       <h1 data-i18n="meds_title">お薬の管理</h1>
       <button class="btn sm" id="addMedBtn" data-i18n="add">＋ 追加</button>
     </div>
-    <button class="btn sec" id="scanBtn" style="margin-bottom:14px" data-i18n="scan_btn">📷 写真からAIで読み取る</button>
+    <button class="btn sec" id="scanBtn" style="margin-bottom:10px" data-i18n="scan_btn">📷 写真からAIで読み取る</button>
+    <button class="btn sec" id="comboBtn" style="margin-bottom:14px" data-i18n="combo_btn">🤝 飲み合わせをチェック</button>
     <div id="medList"></div>
   </section>
 
@@ -448,6 +449,16 @@
   </div>
 </div>
 
+<!-- ===== 飲み合わせチェック モーダル ===== -->
+<div class="modal" id="comboModal">
+  <div class="sheet">
+    <div class="grab"></div>
+    <h2 data-i18n="combo_modal_title">🤝 飲み合わせをチェック</h2>
+    <div id="comboBody"></div>
+    <button class="btn sec sm" id="closeComboBtn" style="width:100%;margin-top:10px;border:none;color:var(--ink-soft)" data-i18n="close_btn">閉じる</button>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 
 <script>
@@ -484,6 +495,7 @@ const I18N = {
     banner_go:'ログイン ›',
     today_title:'今日のお薬', today_sub:'服用予定を確認しましょう', ring_achieve:'達成',
     meds_title:'お薬の管理', add:'＋ 追加', scan_btn:'📷 写真からAIで読み取る',
+    combo_btn:'🤝 飲み合わせをチェック', combo_modal_title:'🤝 飲み合わせをチェック',
     remind_title:'リマインダー', remind_info:'ブラウザ通知はこのページを開いている間に動作します。',
     hosp_title:'病院用まとめ', hosp_status:'服薬状況（過去<span id="rangeDays">14</span>日間）',
     hosp_avg:'平均服薬率', hosp_regmeds:'登録中のお薬', hosp_medlist:'お薬一覧',
@@ -562,6 +574,7 @@ const I18N = {
     banner_go:'로그인 ›',
     today_title:'오늘의 약', today_sub:'복용 예정을 확인하세요', ring_achieve:'달성',
     meds_title:'약 관리', add:'＋ 추가', scan_btn:'📷 사진에서 AI로 읽기',
+    combo_btn:'🤝 궁합 체크', combo_modal_title:'🤝 궁합 체크',
     remind_title:'리마인더', remind_info:'브라우저 알림은 이 페이지를 열어 둔 동안 동작합니다.',
     hosp_title:'병원용 요약', hosp_status:'복약 현황(최근 <span id="rangeDays">14</span>일간)',
     hosp_avg:'평균 복약률', hosp_regmeds:'등록된 약', hosp_medlist:'약 목록',
@@ -1242,6 +1255,10 @@ $('#printBtn').onclick = ()=>window.print();
 let scanMode = 'photo';          // 'photo' | 'list'
 $('#scanBtn').onclick = ()=>{ resetScan(); openModal('scanModal'); };
 $('#closeScanBtn').onclick = ()=>closeModal('scanModal');
+
+/* 飲み合わせチェック（今回は空の画面に移動するだけ。中身は次のステップ） */
+$('#comboBtn').onclick = ()=> openModal('comboModal');
+$('#closeComboBtn').onclick = ()=> closeModal('comboModal');
 function resetScan(){
   scanImage=null; scanMode='photo';
   $('#scanPreview').innerHTML=''; $('#scanResult').innerHTML=''; $('#runScanBtn').style.display='none';
