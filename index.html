@@ -467,6 +467,19 @@
   </div>
 </div>
 
+<!-- ===== 飲み合わせチェック 実行前の確認 ===== -->
+<div class="modal" id="comboConfirmModal">
+  <div class="sheet">
+    <div class="grab"></div>
+    <h2 data-i18n="combo_confirm_title">ご確認ください</h2>
+    <p class="muted" style="line-height:1.7" data-i18n="combo_confirm_text">この結果はあくまで一般的な参考情報です。正確とは限らず、最終的な判断は薬剤師・医師にご相談ください。チェックを続けますか？</p>
+    <div style="display:flex;gap:10px;margin-top:16px">
+      <button class="btn sec" id="comboCancelBtn" style="flex:1" data-i18n="combo_confirm_cancel">やめる</button>
+      <button class="btn" id="comboProceedBtn" style="flex:1" data-i18n="combo_confirm_ok">続ける</button>
+    </div>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 
 <script>
@@ -506,6 +519,9 @@ const I18N = {
     combo_btn:'🤝 飲み合わせをチェック', combo_modal_title:'🤝 飲み合わせをチェック',
     combo_intro:'以下の薬・サプリの飲み合わせをチェックします。', combo_empty:'登録されている薬・サプリがありません。',
     combo_run:'🤝 チェックする', combo_checking:'チェック中…',
+    combo_confirm_title:'ご確認ください',
+    combo_confirm_text:'この結果はあくまで一般的な参考情報です。正確とは限らず、最終的な判断は薬剤師・医師にご相談ください。チェックを続けますか？',
+    combo_confirm_cancel:'やめる', combo_confirm_ok:'続ける',
     combo_failed:(m)=>`チェックに失敗しました：${m}`,
     combo_user_rx:'【処方薬】\n', combo_user_sup:'【サプリメント】\n', combo_none:'（なし）',
     combo_user_ask:'これらの飲み合わせについて、上記の方針にしたがって、やさしい言葉で参考情報を教えてください。',
@@ -591,6 +607,9 @@ const I18N = {
     combo_btn:'🤝 궁합 체크', combo_modal_title:'🤝 궁합 체크',
     combo_intro:'아래 약·영양제의 궁합을 확인합니다.', combo_empty:'등록된 약·영양제가 없습니다.',
     combo_run:'🤝 확인하기', combo_checking:'확인 중…',
+    combo_confirm_title:'확인해 주세요',
+    combo_confirm_text:'이 결과는 어디까지나 일반적인 참고 정보입니다. 정확하다고 할 수 없으며, 최종 판단은 약사·의사와 상담하세요. 확인을 계속할까요?',
+    combo_confirm_cancel:'그만두기', combo_confirm_ok:'계속하기',
     combo_failed:(m)=>`확인에 실패했습니다: ${m}`,
     combo_user_rx:'【처방약】\n', combo_user_sup:'【영양제】\n', combo_none:'（없음）',
     combo_user_ask:'이 약·영양제들의 궁합에 대해, 위 방침에 따라 쉬운 말로 참고 정보를 알려 주세요.',
@@ -1296,8 +1315,12 @@ function renderComboList(){
     }).join('')}</div>
     <button class="btn" id="runComboBtn" style="margin-top:14px">${t('combo_run')}</button>
     <div id="comboResult"></div>`;
-  $('#runComboBtn').onclick = runComboCheck;
+  // すぐ送らず、まず注意の確認ポップアップを出す
+  $('#runComboBtn').onclick = ()=> openModal('comboConfirmModal');
 }
+// 確認ポップアップ：「やめる」は送らず閉じる、「続ける」でAIに送る
+$('#comboCancelBtn').onclick = ()=> closeModal('comboConfirmModal');
+$('#comboProceedBtn').onclick = ()=>{ closeModal('comboConfirmModal'); runComboCheck(); };
 
 // 登録済みの薬・サプリの「名前」と「種別」だけをAIに送り、飲み合わせの参考情報を受け取る
 async function runComboCheck(){
