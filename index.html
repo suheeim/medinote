@@ -136,6 +136,9 @@
   .field textarea{height:auto}
   .field select{padding-right:34px;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath fill='none' stroke='%237a8a86' stroke-width='1.8' d='M1 1.5 6 6.5 11 1.5'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 13px center}
   .field input:focus,.field select:focus,.field textarea:focus{border-color:var(--brand)}
+  /* 入力欄ごとのインラインエラー（赤文字）。該当項目を直せば消える */
+  .field-err{color:#d64545;font-size:.78rem;font-weight:600;margin-top:5px}
+  .field input.invalid,.field select.invalid{border-color:#d64545}
   .chips{display:flex;flex-wrap:wrap;gap:8px}
   .chip{padding:8px 13px;border-radius:999px;border:1.5px solid var(--line);background:#fff;font-size:.86rem;font-weight:600;color:var(--ink-soft)}
   .chip.on{background:var(--brand);border-color:var(--brand);color:#fff}
@@ -432,15 +435,18 @@
     <div class="field">
       <label data-i18n="field_hospital">病院名</label>
       <input id="rxHospital" data-i18n-ph="ph_hospital" placeholder="例）〇〇内科クリニック">
+      <div class="field-err" id="errRxHospital" style="display:none"></div>
     </div>
     <div class="row2">
       <div class="field">
         <label data-i18n="field_rx_date">もらった日</label>
         <input id="rxDate" type="date">
+        <div class="field-err" id="errRxDate" style="display:none"></div>
       </div>
       <div class="field">
         <label data-i18n="field_rx_days">日数</label>
         <input id="rxDays" type="number" min="1" inputmode="numeric" data-i18n-ph="ph_rx_days" placeholder="例）14">
+        <div class="field-err" id="errRxDays" style="display:none"></div>
       </div>
     </div>
     <button class="btn" id="saveRxBtn" data-i18n="save_btn">保存する</button>
@@ -1114,6 +1120,13 @@ function renderRx(){
 }
 
 let editingRxId = null;
+// 入力欄ごとの赤いインラインエラー表示。msgKey が null/未指定なら消す。
+function setRxErr(field, msgKey){
+  const el = $('#errRx'+field), inp = $('#rx'+field);
+  if(msgKey){ el.textContent = t(msgKey); el.style.display='block'; if(inp) inp.classList.add('invalid'); }
+  else{ el.textContent=''; el.style.display='none'; if(inp) inp.classList.remove('invalid'); }
+}
+function clearRxErrs(){ ['Hospital','Date','Days'].forEach(f=>setRxErr(f, null)); }
 function openRxModal(id){
   editingRxId = id||null;
   const p = id ? (state.prescriptions||[]).find(x=>x.id===id)
@@ -1123,17 +1136,28 @@ function openRxModal(id){
   $('#rxDate').value = p.date||'';
   $('#rxDays').value = (p.days===0 || p.days) ? p.days : '';
   $('#deleteRxBtn').style.display = id? 'block':'none';
+  clearRxErrs();
   openModal('rxModal');
 }
 $('#addRxBtn').onclick = ()=>openRxModal(null);
+// 正しく入力されたら、その項目のエラーをすぐ消す
+$('#rxHospital').addEventListener('input', ()=>{ if($('#rxHospital').value.trim()) setRxErr('Hospital', null); });
+$('#rxDate').addEventListener('input', ()=>{ if($('#rxDate').value) setRxErr('Date', null); });
+$('#rxDate').addEventListener('change', ()=>{ if($('#rxDate').value) setRxErr('Date', null); });
+$('#rxDays').addEventListener('input', ()=>{ if($('#rxDays').value.trim()) setRxErr('Days', null); });
 $('#saveRxBtn').onclick = ()=>{
+  clearRxErrs();
   const hospital = $('#rxHospital').value.trim();
   const date = $('#rxDate').value;
-  if(!hospital){ toast(t('toast_hospital_req')); return; }
-  if(!date){ toast(t('toast_rx_date_req')); return; }
   const daysRaw = $('#rxDays').value.trim();
-  if(!daysRaw){ toast(t('toast_rx_days_req')); return; }   // 日数は必須
+  // 必須項目はトーストではなく、該当欄の下に赤文字で表示（複数あればまとめて）
+  let bad = false;
+  if(!hospital){ setRxErr('Hospital', 'toast_hospital_req'); bad = true; }
+  if(!date){ setRxErr('Date', 'toast_rx_date_req'); bad = true; }
+  if(!daysRaw){ setRxErr('Days', 'toast_rx_days_req'); bad = true; }
+  if(bad) return;
   // 重複チェック：「病院名＋もらった日」が既存と同じなら登録させない（編集中の自分は除く）
+  // ※特定の入力欄の問題ではないため、これは従来どおりトースト（モーダル表示中は上部に出る）
   const dup = (state.prescriptions||[]).some(x=>
     x.id!==editingRxId && (x.hospital||'').trim()===hospital && x.date===date);
   if(dup){ toast(t('toast_rx_dup')); return; }
