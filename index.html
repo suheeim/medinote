@@ -420,6 +420,22 @@
         <div class="chip" data-t="bed" data-i18n="slot_bed">寝る前</div>
       </div>
     </div>
+    <!-- 「薬」選択時のみ表示：登録済みの処方から選ぶ（任意） -->
+    <div class="field" id="mRxGroup">
+      <label data-i18n="field_rx_select">処方を選ぶ</label>
+      <select id="mRx"></select>
+    </div>
+    <!-- 「サプリ」選択時のみ表示：飲み始めた日・日数（どちらも任意） -->
+    <div class="row2" id="mSuppleGroup">
+      <div class="field">
+        <label data-i18n="field_supple_start">飲み始めた日</label>
+        <input id="mStartDate" type="date">
+      </div>
+      <div class="field">
+        <label data-i18n="field_rx_days">日数</label>
+        <input id="mSuppleDays" type="number" min="1" inputmode="numeric" data-i18n-ph="ph_rx_days" placeholder="例）14">
+      </div>
+    </div>
     <div class="field">
       <label data-i18n="field_note">メモ（任意）</label>
       <textarea id="mNote" rows="2" data-i18n-ph="ph_note" placeholder="例）血圧の薬。飲み忘れ注意"></textarea>
@@ -611,6 +627,7 @@ const I18N = {
     field_timing:'服用タイミング',
     slot_morning:'朝', slot_noon:'昼', slot_evening:'夜', slot_bed:'寝る前',
     field_note:'メモ（任意）', ph_note:'例）血圧の薬。飲み忘れ注意',
+    field_rx_select:'処方を選ぶ（任意）', rx_select_none:'選択しない', field_supple_start:'飲み始めた日',
     save_btn:'保存する', del_med_btn:'このお薬を削除', close_btn:'閉じる',
     remind_modal_title:'リマインダー', field_time:'時刻', field_slot:'タイミング', del_btn:'削除',
     scan_modal_title:'📷 写真からお薬を読み取り',
@@ -716,6 +733,7 @@ const I18N = {
     field_timing:'복용 시점',
     slot_morning:'아침', slot_noon:'점심', slot_evening:'저녁', slot_bed:'자기 전',
     field_note:'메모(선택)', ph_note:'예) 혈압약. 복용 잊지 않기',
+    field_rx_select:'처방 선택(선택)', rx_select_none:'선택 안 함', field_supple_start:'먹기 시작한 날',
     save_btn:'저장하기', del_med_btn:'이 약 삭제', close_btn:'닫기',
     remind_modal_title:'리마인더', field_time:'시간', field_slot:'시점', del_btn:'삭제',
     scan_modal_title:'📷 사진에서 약 읽기',
@@ -818,7 +836,7 @@ const CFG_KEY = 'medinote_cfg_v1';
 const GTOK_KEY = 'medinote_gtoken_v1';   // Googleトークンを保存（画面遷移・PWAでもログイン維持）
 
 let state = {
-  meds: [],          // {id,name,dose,meal,timings:[],note}
+  meds: [],          // {id,name,dose,meal,timings:[],note, rxId(薬:任意の処方ID), startDate/suppleDays(サプリ:任意)}
   logs: {},          // {'YYYY-MM-DD': {morning:[medId..], ...}}
   reminders: [],     // {id,time,slot,methods:[]}
   prescriptions: [], // {id,hospital,date:'YYYY-MM-DD',days}（病院ごとの処方のまとまり）
@@ -1054,6 +1072,23 @@ function renderMedList(){
 }
 
 /* お薬モーダル */
+// 処方セレクトを最新の処方一覧で埋める（先頭は「選択しない」）。処方が無ければ空のまま
+function fillRxSelect(selectedId){
+  const sel = $('#mRx'); if(!sel) return;
+  const opts = [`<option value="">${esc(t('rx_select_none'))}</option>`];
+  (state.prescriptions||[]).forEach(p=>{
+    const label = [p.hospital, p.date, (p.days!=='' && p.days!=null)? t('rx_days_unit', p.days):''].filter(Boolean).join(' ・ ');
+    opts.push(`<option value="${esc(p.id)}">${esc(label)}</option>`);
+  });
+  sel.innerHTML = opts.join('');
+  sel.value = selectedId || '';   // 選択中の処方が削除済みなら自動的に「選択しない」になる
+}
+// 選択中の種類に応じて、処方欄（薬）／飲み始めた日・日数欄（サプリ）の表示を切り替える
+function updateMedKindFields(){
+  const kind = ($('#mKind .chip.on')?.dataset.k)==='supple' ? 'supple' : 'med';
+  $('#mRxGroup').style.display = kind==='med' ? '' : 'none';
+  $('#mSuppleGroup').style.display = kind==='supple' ? '' : 'none';
+}
 function openMedModal(id, prefill){
   editingMedId = id||null;
   const m = id? state.meds.find(x=>x.id===id) : (prefill||{name:'',dose:'',meal:'none',timings:[],note:'',kind:'med'});
@@ -1065,11 +1100,16 @@ function openMedModal(id, prefill){
   $('#mNote').value = m.note||'';
   $$('#mKind .chip').forEach(c=> c.classList.toggle('on', c.dataset.k===kind));
   $$('#mTimings .chip').forEach(c=> c.classList.toggle('on', (m.timings||[]).includes(c.dataset.t)));
+  // 種類別の追加項目を反映
+  fillRxSelect(m.rxId||'');
+  $('#mStartDate').value = m.startDate||'';
+  $('#mSuppleDays').value = (m.suppleDays===0 || m.suppleDays) ? m.suppleDays : '';
+  updateMedKindFields();
   $('#deleteMedBtn').style.display = id? 'block':'none';
   openModal('medModal');
 }
 $('#addMedBtn').onclick = ()=>openMedModal(null);
-$$('#mKind .chip').forEach(c=> c.onclick=()=> $$('#mKind .chip').forEach(x=>x.classList.toggle('on', x===c)));
+$$('#mKind .chip').forEach(c=> c.onclick=()=>{ $$('#mKind .chip').forEach(x=>x.classList.toggle('on', x===c)); updateMedKindFields(); });
 $$('#mTimings .chip').forEach(c=> c.onclick=()=>c.classList.toggle('on'));
 $('#saveMedBtn').onclick = ()=>{
   const name = $('#mName').value.trim();
@@ -1077,7 +1117,14 @@ $('#saveMedBtn').onclick = ()=>{
   const timings = [...$$('#mTimings .chip.on')].map(c=>c.dataset.t);
   // タイミングは必須にしない（読み取れない/未設定のまま空欄でも登録できる）
   const kind = ($('#mKind .chip.on')?.dataset.k)==='supple' ? 'supple' : 'med';
-  const data = { name, kind, dose:$('#mDose').value.trim(), meal:$('#mMeal').value, timings, note:$('#mNote').value.trim() };
+  // 種類別の追加項目（いずれも任意）。選択中の種類のものだけ値を保存し、他方はクリア
+  const suppleDaysRaw = $('#mSuppleDays').value.trim();
+  const data = {
+    name, kind, dose:$('#mDose').value.trim(), meal:$('#mMeal').value, timings, note:$('#mNote').value.trim(),
+    rxId: kind==='med' ? ($('#mRx').value||'') : '',
+    startDate: kind==='supple' ? $('#mStartDate').value : '',
+    suppleDays: kind==='supple' ? (suppleDaysRaw==='' ? '' : Math.max(1, parseInt(suppleDaysRaw,10)||1)) : ''
+  };
   if(editingMedId){ const m=state.meds.find(x=>x.id===editingMedId); Object.assign(m,data); }
   else{ data.id=uid(); state.meds.push(data); }
   saveLocal(); renderMedList(); renderToday(); closeModal('medModal'); postLineSchedule();
