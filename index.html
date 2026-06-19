@@ -222,9 +222,9 @@
   .toast.show{opacity:1;transform:translateX(-50%) translateY(-4px)}
   /* モーダル表示中は下部シート（保存ボタン等）と重ならないよう画面上部に出す */
   .toast.top{bottom:auto;top:calc(20px + env(safe-area-inset-top))}
-  /* モーダル中央あたりに出すトースト（重複メッセージ用）。折り返さず1行で表示 */
-  .toast.mid{bottom:auto;top:50%;transform:translate(-50%,-50%);white-space:nowrap;max-width:none}
-  .toast.mid.show{transform:translate(-50%,-50%)}
+  /* ボトムシート（入力パネル）の中央に重ねて出すメッセージ（重複通知用）。1行・半透明背景で重なっても読める */
+  #rxModal .sheet{position:relative}
+  .sheet-msg{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);z-index:5;background:rgba(20,35,32,.92);color:#fff;padding:11px 18px;border-radius:999px;font-size:.85rem;font-weight:700;white-space:nowrap;max-width:92%;text-align:center;box-shadow:0 6px 20px rgba(0,0,0,.3);pointer-events:none}
 
   .banner{background:#fff7ed;border:1px solid #f3d9b8;color:#8a5a22;border-radius:12px;padding:11px 13px;font-size:.82rem;margin-bottom:13px;display:flex;gap:8px}
   .signin-wrap{text-align:center;padding:14px 0}
@@ -455,6 +455,7 @@
     <button class="btn" id="saveRxBtn" data-i18n="save_btn">保存する</button>
     <button class="btn sec sm" id="deleteRxBtn" style="width:100%;margin-top:8px;display:none" data-i18n="del_rx_btn">この処方を削除</button>
     <button class="btn sec sm" id="closeRxBtn" style="width:100%;margin-top:8px;border:none;color:var(--ink-soft)" data-i18n="close_btn">閉じる</button>
+    <div class="sheet-msg" id="rxDupMsg" style="display:none"></div>
   </div>
 </div>
 
@@ -845,7 +846,7 @@ const $$ = s => document.querySelectorAll(s);
 const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2,6);
 function fmtDate(d){ return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
 function isSameDay(a,b){ return fmtDate(a)===fmtDate(b); }
-function toast(msg, pos){ const t=$('#toast'); t.textContent=msg; const modalOpen=!!document.querySelector('.modal.open'); t.classList.toggle('mid', pos==='mid'); t.classList.toggle('top', modalOpen && pos!=='mid'); t.classList.add('show'); clearTimeout(t._t); t._t=setTimeout(()=>t.classList.remove('show'),2200); }
+function toast(msg){ const t=$('#toast'); t.textContent=msg; t.classList.toggle('top', !!document.querySelector('.modal.open')); t.classList.add('show'); clearTimeout(t._t); t._t=setTimeout(()=>t.classList.remove('show'),2200); }
 
 /* ---------- 保存・読み込み ---------- */
 function loadLocal(){
@@ -1129,7 +1130,10 @@ function setRxErr(field, msgKey){
   if(msgKey){ el.textContent = t(msgKey); el.style.display='block'; if(inp) inp.classList.add('invalid'); }
   else{ el.textContent=''; el.style.display='none'; if(inp) inp.classList.remove('invalid'); }
 }
-function clearRxErrs(){ ['Hospital','Date','Days'].forEach(f=>setRxErr(f, null)); }
+function clearRxErrs(){ ['Hospital','Date','Days'].forEach(f=>setRxErr(f, null)); hideRxDup(); }
+// 重複メッセージをボトムシート中央に重ねて表示／非表示
+function showRxDup(){ const m=$('#rxDupMsg'); m.textContent=t('toast_rx_dup'); m.style.display='block'; clearTimeout(m._t); m._t=setTimeout(()=>{ m.style.display='none'; },2600); }
+function hideRxDup(){ const m=$('#rxDupMsg'); if(!m) return; m.style.display='none'; clearTimeout(m._t); }
 function openRxModal(id){
   editingRxId = id||null;
   const p = id ? (state.prescriptions||[]).find(x=>x.id===id)
@@ -1144,9 +1148,9 @@ function openRxModal(id){
 }
 $('#addRxBtn').onclick = ()=>openRxModal(null);
 // 正しく入力されたら、その項目のエラーをすぐ消す
-$('#rxHospital').addEventListener('input', ()=>{ if($('#rxHospital').value.trim()) setRxErr('Hospital', null); });
-$('#rxDate').addEventListener('input', ()=>{ if($('#rxDate').value) setRxErr('Date', null); });
-$('#rxDate').addEventListener('change', ()=>{ if($('#rxDate').value) setRxErr('Date', null); });
+$('#rxHospital').addEventListener('input', ()=>{ hideRxDup(); if($('#rxHospital').value.trim()) setRxErr('Hospital', null); });
+$('#rxDate').addEventListener('input', ()=>{ hideRxDup(); if($('#rxDate').value) setRxErr('Date', null); });
+$('#rxDate').addEventListener('change', ()=>{ hideRxDup(); if($('#rxDate').value) setRxErr('Date', null); });
 $('#rxDays').addEventListener('input', ()=>{ if($('#rxDays').value.trim()) setRxErr('Days', null); });
 $('#saveRxBtn').onclick = ()=>{
   clearRxErrs();
@@ -1163,7 +1167,7 @@ $('#saveRxBtn').onclick = ()=>{
   // ※特定の入力欄の問題ではないため、これは従来どおりトースト（モーダル表示中は上部に出る）
   const dup = (state.prescriptions||[]).some(x=>
     x.id!==editingRxId && (x.hospital||'').trim()===hospital && x.date===date);
-  if(dup){ toast(t('toast_rx_dup'), 'mid'); return; }
+  if(dup){ showRxDup(); return; }
   const days = Math.max(1, parseInt(daysRaw,10)||1);
   const data = { hospital, date, days };
   if(editingRxId){ const p=state.prescriptions.find(x=>x.id===editingRxId); Object.assign(p,data); }
