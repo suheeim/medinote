@@ -217,6 +217,8 @@
 
   .toast{position:fixed;bottom:90px;left:50%;transform:translateX(-50%);background:var(--ink);color:#fff;padding:11px 18px;border-radius:999px;font-size:.85rem;font-weight:600;z-index:100;opacity:0;transition:.3s;pointer-events:none;box-shadow:0 4px 16px rgba(0,0,0,.2)}
   .toast.show{opacity:1;transform:translateX(-50%) translateY(-4px)}
+  /* モーダル表示中は下部シート（保存ボタン等）と重ならないよう画面上部に出す */
+  .toast.top{bottom:auto;top:calc(20px + env(safe-area-inset-top))}
 
   .banner{background:#fff7ed;border:1px solid #f3d9b8;color:#8a5a22;border-radius:12px;padding:11px 13px;font-size:.82rem;margin-bottom:13px;display:flex;gap:8px}
   .signin-wrap{text-align:center;padding:14px 0}
@@ -616,6 +618,7 @@ const I18N = {
     del_rx_btn:'この処方を削除', confirm_del_rx:'この処方を削除しますか？',
     toast_rx_dup:'この処方はすでに登録されています',
     toast_hospital_req:'病院名を入力してください', toast_rx_date_req:'もらった日を選んでください',
+    toast_rx_days_req:'日数を入力してください',
     // 動的
     date_today:'今日', date_yesterday:'昨日', date_tomorrow:'明日',
     weekdays:['日','月','火','水','木','金','土'],
@@ -720,6 +723,7 @@ const I18N = {
     del_rx_btn:'이 처방 삭제', confirm_del_rx:'이 처방을 삭제할까요?',
     toast_rx_dup:'이 처방은 이미 등록되어 있습니다',
     toast_hospital_req:'병원 이름을 입력하세요', toast_rx_date_req:'받은 날을 선택하세요',
+    toast_rx_days_req:'일수를 입력하세요',
     // 동적
     date_today:'오늘', date_yesterday:'어제', date_tomorrow:'내일',
     weekdays:['일','월','화','수','목','금','토'],
@@ -832,7 +836,7 @@ const $$ = s => document.querySelectorAll(s);
 const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2,6);
 function fmtDate(d){ return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
 function isSameDay(a,b){ return fmtDate(a)===fmtDate(b); }
-function toast(msg){ const t=$('#toast'); t.textContent=msg; t.classList.add('show'); clearTimeout(t._t); t._t=setTimeout(()=>t.classList.remove('show'),2200); }
+function toast(msg){ const t=$('#toast'); t.textContent=msg; t.classList.toggle('top', !!document.querySelector('.modal.open')); t.classList.add('show'); clearTimeout(t._t); t._t=setTimeout(()=>t.classList.remove('show'),2200); }
 
 /* ---------- 保存・読み込み ---------- */
 function loadLocal(){
@@ -1127,12 +1131,13 @@ $('#saveRxBtn').onclick = ()=>{
   const date = $('#rxDate').value;
   if(!hospital){ toast(t('toast_hospital_req')); return; }
   if(!date){ toast(t('toast_rx_date_req')); return; }
+  const daysRaw = $('#rxDays').value.trim();
+  if(!daysRaw){ toast(t('toast_rx_days_req')); return; }   // 日数は必須
   // 重複チェック：「病院名＋もらった日」が既存と同じなら登録させない（編集中の自分は除く）
   const dup = (state.prescriptions||[]).some(x=>
     x.id!==editingRxId && (x.hospital||'').trim()===hospital && x.date===date);
   if(dup){ toast(t('toast_rx_dup')); return; }
-  const daysRaw = $('#rxDays').value.trim();
-  const days = daysRaw==='' ? '' : Math.max(1, parseInt(daysRaw,10)||1);
+  const days = Math.max(1, parseInt(daysRaw,10)||1);
   const data = { hospital, date, days };
   if(editingRxId){ const p=state.prescriptions.find(x=>x.id===editingRxId); Object.assign(p,data); }
   else{ data.id=uid(); (state.prescriptions=state.prescriptions||[]).push(data); }
