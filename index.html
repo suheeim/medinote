@@ -298,6 +298,15 @@
     <div id="medList"></div>
   </section>
 
+  <!-- ========== 処方の管理 ========== -->
+  <section class="view" id="view-rx">
+    <div class="section-title">
+      <h1 data-i18n="rx_title">処方の管理</h1>
+      <button class="btn sm" id="addRxBtn" data-i18n="add">＋ 追加</button>
+    </div>
+    <div id="rxList"></div>
+  </section>
+
   <!-- ========== リマインダー ========== -->
   <section class="view" id="view-remind">
     <div class="section-title">
@@ -357,6 +366,7 @@
 <nav class="tabbar">
   <button data-tab="today" class="on"><span class="ic">📅</span><span data-i18n="tab_today">今日</span></button>
   <button data-tab="meds"><span class="ic">💊</span><span data-i18n="tab_meds">お薬</span></button>
+  <button data-tab="rx"><span class="ic">🧾</span><span data-i18n="tab_rx">処方</span></button>
   <button data-tab="remind"><span class="ic">⏰</span><span data-i18n="tab_remind">通知</span></button>
   <button data-tab="hospital"><span class="ic">🏥</span><span data-i18n="tab_hospital">病院用</span></button>
   <button data-tab="account"><span class="ic">⚙️</span><span data-i18n="tab_account">設定</span></button>
@@ -409,6 +419,31 @@
     <button class="btn" id="saveMedBtn" data-i18n="save_btn">保存する</button>
     <button class="btn sec sm" id="deleteMedBtn" style="width:100%;margin-top:8px;display:none" data-i18n="del_med_btn">このお薬を削除</button>
     <button class="btn sec sm" id="closeMedBtn" style="width:100%;margin-top:8px;border:none;color:var(--ink-soft)" data-i18n="close_btn">閉じる</button>
+  </div>
+</div>
+
+<!-- ===== 処方 追加/編集モーダル ===== -->
+<div class="modal" id="rxModal">
+  <div class="sheet">
+    <div class="grab"></div>
+    <h2 id="rxModalTitle" data-i18n="rx_add">処方を追加</h2>
+    <div class="field">
+      <label data-i18n="field_hospital">病院名</label>
+      <input id="rxHospital" data-i18n-ph="ph_hospital" placeholder="例）〇〇内科クリニック">
+    </div>
+    <div class="row2">
+      <div class="field">
+        <label data-i18n="field_rx_date">もらった日</label>
+        <input id="rxDate" type="date">
+      </div>
+      <div class="field">
+        <label data-i18n="field_rx_days">日数</label>
+        <input id="rxDays" type="number" min="1" inputmode="numeric" data-i18n-ph="ph_rx_days" placeholder="例）14">
+      </div>
+    </div>
+    <button class="btn" id="saveRxBtn" data-i18n="save_btn">保存する</button>
+    <button class="btn sec sm" id="deleteRxBtn" style="width:100%;margin-top:8px;display:none" data-i18n="del_rx_btn">この処方を削除</button>
+    <button class="btn sec sm" id="closeRxBtn" style="width:100%;margin-top:8px;border:none;color:var(--ink-soft)" data-i18n="close_btn">閉じる</button>
   </div>
 </div>
 
@@ -571,6 +606,16 @@ const I18N = {
     scan_mode_photo:'💊 処方薬', scan_mode_list:'🌿 サプリメント',
     scan_pick:'📷 写真を選ぶ', scan_run:'🔍 AIで読み取る',
     med_add_default:'お薬を追加',
+    // 処方（病院ごとのまとまり）
+    tab_rx:'処方', rx_title:'処方の管理',
+    rx_empty:'まだ処方が登録されていません', rx_empty_hint:'「＋追加」で、病院・もらった日・日数の処方を登録できます',
+    rx_add:'処方を追加', rx_edit:'処方を編集',
+    field_hospital:'病院名', ph_hospital:'例）〇〇内科クリニック',
+    field_rx_date:'もらった日', field_rx_days:'日数', ph_rx_days:'例）14',
+    rx_days_unit:(n)=>`${n}日分`,
+    del_rx_btn:'この処方を削除', confirm_del_rx:'この処方を削除しますか？',
+    toast_rx_dup:'この処方はすでに登録されています',
+    toast_hospital_req:'病院名を入力してください', toast_rx_date_req:'もらった日を選んでください',
     // 動的
     date_today:'今日', date_yesterday:'昨日', date_tomorrow:'明日',
     weekdays:['日','月','火','水','木','金','土'],
@@ -665,6 +710,16 @@ const I18N = {
     scan_mode_photo:'💊 처방약', scan_mode_list:'🌿 영양제',
     scan_pick:'📷 사진 선택', scan_run:'🔍 AI로 읽기',
     med_add_default:'약 추가',
+    // 처방(병원별 묶음)
+    tab_rx:'처방', rx_title:'처방 관리',
+    rx_empty:'아직 등록된 처방이 없습니다', rx_empty_hint:'\'＋추가\'로 병원·받은 날·일수를 등록할 수 있어요',
+    rx_add:'처방 추가', rx_edit:'처방 편집',
+    field_hospital:'병원 이름', ph_hospital:'예) 〇〇내과의원',
+    field_rx_date:'받은 날', field_rx_days:'일수', ph_rx_days:'예) 14',
+    rx_days_unit:(n)=>`${n}일분`,
+    del_rx_btn:'이 처방 삭제', confirm_del_rx:'이 처방을 삭제할까요?',
+    toast_rx_dup:'이 처방은 이미 등록되어 있습니다',
+    toast_hospital_req:'병원 이름을 입력하세요', toast_rx_date_req:'받은 날을 선택하세요',
     // 동적
     date_today:'오늘', date_yesterday:'어제', date_tomorrow:'내일',
     weekdays:['일','월','화','수','목','금','토'],
@@ -752,6 +807,7 @@ let state = {
   meds: [],          // {id,name,dose,meal,timings:[],note}
   logs: {},          // {'YYYY-MM-DD': {morning:[medId..], ...}}
   reminders: [],     // {id,time,slot,methods:[]}
+  prescriptions: [], // {id,hospital,date:'YYYY-MM-DD',days}（病院ごとの処方のまとまり）
   settings: {notif:false, snooze:true, snoozeMin:10}
 };
 // Google OAuth クライアントID（コードに直接埋め込み。OAuthクライアントIDは公開前提の値）
@@ -807,6 +863,7 @@ function switchTab(tab){
   window.scrollTo(0,0);
   if(tab==='hospital') renderHospital();
   if(tab==='meds') renderMedList();
+  if(tab==='rx') renderRx();
   if(tab==='remind') renderReminders();
 }
 $$('.tabbar button').forEach(b=> b.onclick = ()=>switchTab(b.dataset.tab));
@@ -1020,6 +1077,76 @@ $('#deleteMedBtn').onclick = ()=>{
   toast(t('toast_deleted'));
 };
 $('#closeMedBtn').onclick = ()=>closeModal('medModal');
+
+/* ============================================================
+   処方の管理（病院ごとのまとまり）
+   ※ 今回は登録・編集・削除と重複チェックのみ。薬との紐づけ・残日数計算は次のステップ。
+   ============================================================ */
+function renderRx(){
+  const wrap = $('#rxList'); if(!wrap) return; wrap.innerHTML='';
+  const list = state.prescriptions || [];
+  if(list.length===0){
+    wrap.innerHTML = `<div class="card empty"><div class="big">🧾</div><div>${t('rx_empty')}</div>
+      <div class="muted" style="margin-top:6px">${t('rx_empty_hint')}</div></div>`;
+    return;
+  }
+  // もらった日が新しい順に表示
+  const sorted = [...list].sort((a,b)=> String(b.date||'').localeCompare(String(a.date||'')));
+  sorted.forEach(p=>{
+    const meta = [p.date, (p.days!=='' && p.days!=null) ? t('rx_days_unit', p.days) : '']
+      .filter(Boolean).join(' ・ ') || '　';
+    const card = document.createElement('div');
+    card.className='med-card';
+    card.innerHTML = `
+      <div class="badge">🧾</div>
+      <div class="body">
+        <div class="nm">${esc(p.hospital)}</div>
+        <div class="meta">${esc(meta)}</div>
+      </div>
+      <button class="icon-btn" data-edit="${p.id}">✏️</button>`;
+    wrap.appendChild(card);
+  });
+  wrap.querySelectorAll('[data-edit]').forEach(b=> b.onclick=()=>openRxModal(b.dataset.edit));
+}
+
+let editingRxId = null;
+function openRxModal(id){
+  editingRxId = id||null;
+  const p = id ? (state.prescriptions||[]).find(x=>x.id===id)
+              : { hospital:'', date:fmtDate(new Date()), days:'' };
+  $('#rxModalTitle').textContent = id ? t('rx_edit') : t('rx_add');
+  $('#rxHospital').value = p.hospital||'';
+  $('#rxDate').value = p.date||'';
+  $('#rxDays').value = (p.days===0 || p.days) ? p.days : '';
+  $('#deleteRxBtn').style.display = id? 'block':'none';
+  openModal('rxModal');
+}
+$('#addRxBtn').onclick = ()=>openRxModal(null);
+$('#saveRxBtn').onclick = ()=>{
+  const hospital = $('#rxHospital').value.trim();
+  const date = $('#rxDate').value;
+  if(!hospital){ toast(t('toast_hospital_req')); return; }
+  if(!date){ toast(t('toast_rx_date_req')); return; }
+  // 重複チェック：「病院名＋もらった日」が既存と同じなら登録させない（編集中の自分は除く）
+  const dup = (state.prescriptions||[]).some(x=>
+    x.id!==editingRxId && (x.hospital||'').trim()===hospital && x.date===date);
+  if(dup){ toast(t('toast_rx_dup')); return; }
+  const daysRaw = $('#rxDays').value.trim();
+  const days = daysRaw==='' ? '' : Math.max(1, parseInt(daysRaw,10)||1);
+  const data = { hospital, date, days };
+  if(editingRxId){ const p=state.prescriptions.find(x=>x.id===editingRxId); Object.assign(p,data); }
+  else{ data.id=uid(); (state.prescriptions=state.prescriptions||[]).push(data); }
+  saveLocal(); renderRx(); closeModal('rxModal');
+  toast(t('toast_saved'));
+};
+$('#deleteRxBtn').onclick = ()=>{
+  if(!editingRxId) return;
+  if(!confirm(t('confirm_del_rx'))) return;
+  state.prescriptions = (state.prescriptions||[]).filter(p=>p.id!==editingRxId);
+  saveLocal(); renderRx(); closeModal('rxModal');
+  toast(t('toast_deleted'));
+};
+$('#closeRxBtn').onclick = ()=>closeModal('rxModal');
 
 /* ============================================================
    リマインダー
@@ -1731,8 +1858,14 @@ async function cloudLoad(){
       const remoteCount = (remote.meds?.length||0) + Object.keys(remote.logs||{}).length;
       if(remoteCount >= localCount){
         const prevReminders = state.reminders || [];
+        const prevPrescriptions = state.prescriptions || [];
         const prevLine = state.line;
-        state = Object.assign({meds:[],logs:{},reminders:[],settings:state.settings}, remote);
+        state = Object.assign({meds:[],logs:{},reminders:[],prescriptions:[],settings:state.settings}, remote);
+        // クラウド側に処方データが無い（古い同期）のに手元にある場合は、手元を保持する
+        if((!state.prescriptions || !state.prescriptions.length) && prevPrescriptions.length){
+          state.prescriptions = prevPrescriptions;
+          cloudSave();
+        }
         // この端末で連携済みなら state.line を失わないよう保持（古いクラウドデータで消えるのを防ぐ）
         if(!state.line && (prevLine || cfg.lineUserId)){
           state.line = prevLine || { userId: cfg.lineUserId, name: cfg.lineName||'' };
@@ -1770,7 +1903,7 @@ $('#signOutBtn').onclick = googleSignOut;
 $('#syncNowBtn').onclick = async ()=>{ if(!accessToken){toast(t('toast_login_req'));return;} await cloudSave(); toast(t('toast_synced')); };
 $('#resetBtn').onclick = ()=>{
   if(!confirm(t('confirm_reset'))) return;
-  state = {meds:[],logs:{},reminders:[],settings:{notif:false,snooze:true,snoozeMin:10}};
+  state = {meds:[],logs:{},reminders:[],prescriptions:[],settings:{notif:false,snooze:true,snoozeMin:10}};
   saveLocal(); renderAll(); toast(t('toast_deleted'));
 };
 
@@ -1811,7 +1944,7 @@ function mdToHtml(text){
   closeList();
   return html;
 }
-function renderAll(){ renderToday(); renderMedList(); renderReminders(); }
+function renderAll(){ renderToday(); renderMedList(); renderRx(); renderReminders(); }
 
 // 言語切り替えドロップダウンの配線
 function wireLangSwitcher(){
