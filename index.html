@@ -912,6 +912,34 @@ function getLog(dateStr){
 function medKind(m){ return m.kind==='supple' ? 'supple' : 'med'; }
 function medsForSlot(slotKey, kind){ return state.meds.filter(m=> m.timings.includes(slotKey) && (!kind || medKind(m)===kind)); }
 
+/* ---------- 残り日数の計算（薬・サプリ共通） ----------
+   計算式：(起点の日 ＋ 日数) − 今日 ＝ 残り日数
+   起点の日・日数のどちらかが空なら null（計算できない）を返す。エラーにしない。 */
+function calcRemainingDays(startDateStr, days){
+  // どちらかが空（未入力）なら計算をスキップ
+  if(startDateStr===undefined || startDateStr===null || startDateStr==='') return null;
+  if(days===undefined || days===null || days==='') return null;
+  const n = Number(days);
+  if(!Number.isFinite(n)) return null;
+  const start = new Date(startDateStr + 'T00:00:00');
+  if(isNaN(start.getTime())) return null;
+  const today = new Date(); today.setHours(0,0,0,0);
+  const end = new Date(start); end.setDate(end.getDate() + n); // 起点の日 ＋ 日数
+  return Math.round((end - today) / 86400000); // − 今日（ミリ秒→日数）
+}
+// 薬・サプリの残り日数を返す。項目名は違うが計算は共通ロジックを使う。
+// 薬：起点＝処方の もらった日(date)、日数＝処方の days
+// サプリ：起点＝飲み始めた日(startDate)、日数＝suppleDays
+// 計算できない場合（起点／日数が空、処方が無い等）は null を返す。
+function medRemainingDays(m){
+  if(medKind(m)==='supple'){
+    return calcRemainingDays(m.startDate, m.suppleDays);
+  }
+  const rx = state.prescriptions.find(p=> p.id===m.rxId);
+  if(!rx) return null;
+  return calcRemainingDays(rx.date, rx.days);
+}
+
 function renderToday(){
   const ds = fmtDate(viewDate);
   const today = new Date();
